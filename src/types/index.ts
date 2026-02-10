@@ -8,14 +8,26 @@ export interface Stats {
   speed: number;
 }
 
+export type SkillCategory = 'Single' | 'AOE' | 'Buff' | 'Heal';
+
+export interface Buff {
+  type: 'atk' | 'def' | 'speed';
+  value: number; // Percentage increase (e.g., 0.2 for 20%)
+  duration: number; // Turns
+}
+
 export interface Skill {
   id: string;
   name: string;
   type: ElementType;
-  power: number;
+  category: SkillCategory;
+  power: number; // Damage or Heal amount
   accuracy: number;
   description: string;
   cooldown: number; // in turns
+  range: number; // Cast range
+  aoeRadius?: number; // For AOE skills (e.g., 1 for 3x3, 0 for 1x1)
+  buff?: Buff; // For Buff skills
 }
 
 export interface Pokemon {
@@ -28,6 +40,8 @@ export interface Pokemon {
   exp: number;
   sprite: string; // URL or asset path
   isWild?: boolean;
+  moveRange?: number; // Movement range on battle grid
+  attackRange?: number; // Basic attack range on battle grid
 }
 
 export interface Player {
@@ -54,6 +68,7 @@ export interface GridCell {
   type: CellType;
   isWalkable: boolean;
   hasEnemy?: boolean;
+  enemyCount?: number; // Added for map visualization
   enemyGroup?: Pokemon[]; // If hasEnemy is true
   hasResource?: boolean;
   resourceType?: string;

@@ -19,18 +19,27 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   team: [],
   storage: [],
   pokedex: [],
-  inventory: [],
+  inventory: [
+    { id: 'pokeball', name: 'Poke Ball', count: 5, type: 'consumable' }
+  ],
   gold: 0,
   diamonds: 0,
 
   addPokemon: (pokemon) => set((state) => {
+    // 1. Add Species ID to Pokedex (assume pokemon.id is the species ID)
     const newPokedex = state.pokedex.includes(pokemon.id) ? state.pokedex : [...state.pokedex, pokemon.id];
     
+    // 2. Generate unique instance ID for storage/team
+    const uniquePokemon = { 
+        ...pokemon, 
+        id: `${pokemon.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` 
+    };
+
     if (state.team.length < 4) {
-      return { team: [...state.team, pokemon], pokedex: newPokedex };
+      return { team: [...state.team, uniquePokemon], pokedex: newPokedex };
     }
     // Send to storage if team is full
-    return { storage: [...state.storage, pokemon], pokedex: newPokedex };
+    return { storage: [...state.storage, uniquePokemon], pokedex: newPokedex };
   }),
 
   removePokemon: (id) => set((state) => ({

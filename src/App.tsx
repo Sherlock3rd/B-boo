@@ -1,4 +1,3 @@
-import React from 'react';
 import { GridMap } from './components/map/GridMap';
 import { BattleScene } from './components/battle/BattleScene';
 import { Pokedex } from './components/menu/Pokedex';
@@ -9,23 +8,13 @@ import { usePlayerStore } from './store/usePlayerStore';
 
 function App() {
   const { scene, setScene } = useGameFlowStore();
-  const { endBattle, winner, units } = useBattleStore();
+  const { endBattle, units } = useBattleStore();
   const { addPokemon } = usePlayerStore();
 
   const handleBattleEnd = (result: 'player' | 'enemy') => {
     if (result === 'player') {
-      // Capture logic: Add a random surviving enemy or just the first enemy?
-      // User said "玩家战胜对方后可以收费该宝可梦"
-      // Let's capture the first enemy unit base data
-      const enemyUnits = units.filter(u => u.team === 'enemy');
-      if (enemyUnits.length > 0) {
-         // Create a new pokemon instance from the battle unit
-         const captured = { ...enemyUnits[0], isWild: false };
-         // Remove battle specific props
-         const { instanceId, currentHp, maxHp, actionValue, team, isDead, ...basePokemon } = captured;
-         addPokemon(basePokemon as any); // Cast to fix type mismatch if any
-         alert(`You captured ${basePokemon.name}!`);
-      }
+      // Capture logic handled in BattleScene now
+      // alert('Victory!'); 
     } else {
         alert('You were defeated...');
     }

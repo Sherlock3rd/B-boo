@@ -8,7 +8,7 @@ export const TYPE_CHART: Record<ElementType, Record<ElementType, number>> = {
   Dark: { Fire: 1, Water: 1, Wind: 1, Light: 2, Dark: 1 },
 };
 
-export const MAP_WIDTH = 20;
+export const MAP_WIDTH = 40; // Doubled from 20 to 40
 export const MAP_HEIGHT = 30; // 16:9 vertical ratio rough approximation for grid
 
 export const MAX_TEAM_SIZE = 4;

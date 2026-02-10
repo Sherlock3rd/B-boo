@@ -7,7 +7,8 @@ import { CellType } from '@/types';
 import { useGameFlowStore } from '@/store/useGameFlowStore';
 import { useBattleStore } from '@/store/useBattleStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
-import { INITIAL_PLAYER_TEAM, WILD_POKEMON_POOL } from '@/data/pokemon';
+import { INITIAL_PLAYER_TEAM, WILD_POKEMON_POOL, INITIAL_PLATEAU_POOL, ISTVAN_V_POOL } from '@/data/pokemon';
+import { generatePokemon } from '@/utils/pokemonGenerator';
 
 // Helper for cell styling
 const getCellColor = (type: CellType) => {
@@ -29,6 +30,10 @@ const CellIcon = ({ type }: { type: CellType }) => {
   }
 };
 
+import { MAP_WIDTH } from '@/data/constants';
+
+// ... (Imports)
+
 export const GridMap: React.FC = () => {
   const { grid, playerPosition, movePlayer, initMap, checkEncounter, clearEncounter } = useMapStore();
   const { setScene } = useGameFlowStore();
@@ -38,17 +43,31 @@ export const GridMap: React.FC = () => {
   // Viewport Settings
   const VIEWPORT_W = 9;
   const VIEWPORT_H = 13;
+  
+  // Calculate current Zone Name
+  const SPLIT_X = Math.floor(MAP_WIDTH / 2);
+  const currentZoneName = playerPosition.x < SPLIT_X ? "Initial Plateau" : "Istvan V";
 
   // Initialize map and team on mount if empty
+  const [initialized, setInitialized] = React.useState(false);
+  
   useEffect(() => {
     if (grid.length === 0) {
       initMap(1);
     }
-    // Init team if empty (debug)
-    if (team.length === 0) {
-        INITIAL_PLAYER_TEAM.forEach(p => addPokemon(p));
+    // Init team if strictly empty and not yet initialized in this session
+    // Using a ref or state to track if we've already tried initializing might be safer 
+    // but checking team.length === 0 should be enough IF strict mode doesn't double invoke.
+    // However, StrictMode DOES double invoke effects.
+    
+    if (team.length === 0 && !initialized) {
+        setInitialized(true);
+        // Only add if truly empty
+        if (usePlayerStore.getState().team.length === 0) {
+            INITIAL_PLAYER_TEAM.forEach(p => addPokemon(generatePokemon(p)));
+        }
     }
-  }, [grid, initMap, team, addPokemon]);
+  }, [grid, initMap, team, addPokemon, initialized]);
 
   // Keyboard controls
   useEffect(() => {
@@ -68,14 +87,34 @@ export const GridMap: React.FC = () => {
     if (checkEncounter()) {
       const { x, y } = playerPosition;
       
-      // Generate random enemies
-      const enemyCount = Math.floor(Math.random() * 2) + 1; // 1-2 enemies
-      const enemies = Array(enemyCount).fill(0).map(() => {
-          const base = WILD_POKEMON_POOL[Math.floor(Math.random() * WILD_POKEMON_POOL.length)];
-          return { ...base, id: base.id + Math.random() }; // Unique ID clone
-      });
-
-      startBattle(team, enemies);
+      // Use current team from store directly to ensure sync
+      // 'team' from usePlayerStore() hook is already up to date here
+      
+      const cell = grid[y]?.[x]; // Define cell here before using it! Add safety check
+      
+      if (!cell) {
+          // Should not happen given logic, but safe guard
+          clearEncounter(x, y);
+          return;
+      }
+      
+      // USE PRE-GENERATED ENEMY GROUP
+      if (cell.enemyGroup && cell.enemyGroup.length > 0) {
+          // Clone them to ensure new instances
+          const encounterEnemies = cell.enemyGroup.map(base => generatePokemon(base));
+          startBattle(team, encounterEnemies);
+      } else {
+          // Fallback if no pre-gen group (shouldn't happen with new mapGen)
+          const count = cell.enemyCount || 1;
+          const enemies = Array(count).fill(0).map(() => {
+              // Determine pool based on zone
+              const pool = x < Math.floor(MAP_WIDTH / 2) ? INITIAL_PLATEAU_POOL : ISTVAN_V_POOL;
+              const base = pool[Math.floor(Math.random() * pool.length)];
+              return generatePokemon(base); 
+          });
+          startBattle(team, enemies);
+      }
+      
       setScene('battle');
       
       clearEncounter(x, y);
@@ -92,7 +131,7 @@ export const GridMap: React.FC = () => {
     const y = startY + dy;
     return Array.from({ length: VIEWPORT_W }, (_, dx) => {
       const x = startX + dx;
-      if (y >= 0 && y < grid.length && x >= 0 && x < grid[0].length) {
+      if (y >= 0 && y < grid.length && grid[y] && x >= 0 && x < grid[y].length) {
         return grid[y][x];
       }
       return null; // Void cell
@@ -101,6 +140,16 @@ export const GridMap: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center justify-center h-full w-full overflow-hidden bg-black relative">
+      {/* Zone HUD */}
+      <div className="absolute top-4 left-4 z-50 bg-black/60 px-4 py-2 rounded-lg border border-white/20 backdrop-blur-sm">
+          <h2 className="text-xl font-bold text-yellow-400 font-mono tracking-widest uppercase">
+              {currentZoneName}
+          </h2>
+          <div className="text-xs text-gray-400">
+              COORD: {playerPosition.x}, {playerPosition.y}
+          </div>
+      </div>
+
       {/* UI Overlay */}
       <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
         <button 
@@ -155,15 +204,61 @@ export const GridMap: React.FC = () => {
 
                 {/* Enemy */}
                 {cell.hasEnemy && !isPlayerHere && (
-                  <div className="absolute inset-0 flex items-center justify-center animate-pulse">
-                    <Skull className="w-8 h-8 text-red-900 drop-shadow-md" />
+                  <div className={cn(
+                      "absolute flex items-center justify-center animate-pulse z-20", // Added z-index
+                      // Size logic based on enemyCount
+                      cell.enemyCount && cell.enemyCount >= 9 ? "w-[300%] h-[300%] -top-[100%] -left-[100%]" :
+                      cell.enemyCount && cell.enemyCount >= 4 ? "w-[200%] h-[200%] -top-[50%] -left-[50%]" :
+                      "inset-0"
+                  )}>
+                    {/* Render Preview Sprite if available, else Skull */}
+                    {cell.enemyGroup && cell.enemyGroup.length > 0 ? (
+                        <img 
+                            src={cell.enemyGroup[0].sprite} 
+                            alt="enemy" 
+                            className={cn(
+                                "object-contain pixelated drop-shadow-md transition-all",
+                                cell.enemyCount && cell.enemyCount >= 9 ? "w-24 h-24" :
+                                cell.enemyCount && cell.enemyCount >= 4 ? "w-16 h-16" :
+                                "w-10 h-10"
+                            )}
+                        />
+                    ) : (
+                        <Skull className={cn(
+                            "text-red-900 drop-shadow-md transition-all",
+                            cell.enemyCount && cell.enemyCount >= 9 ? "w-24 h-24" :
+                            cell.enemyCount && cell.enemyCount >= 4 ? "w-16 h-16" :
+                            "w-8 h-8"
+                        )} />
+                    )}
+                    
+                    {/* Count Indicator */}
+                    <span className="absolute bottom-0 right-0 bg-red-600 text-white text-[10px] px-1 rounded-full font-bold">
+                        {cell.enemyCount}
+                    </span>
                   </div>
                 )}
 
                 {/* Player */}
                 {isPlayerHere && (
                   <div className="absolute inset-0 flex items-center justify-center z-10">
-                    <User className="w-8 h-8 text-white drop-shadow-lg fill-white" />
+                    <img 
+                        src="https://img.pokemondb.net/sprites/black-white/anim/normal/pikachu.gif" // Placeholder or specific Trainer sprite if available.
+                        // Since I don't have a reliable Ash URL handy that is guaranteed to work without hotlink protection, 
+                        // I'll use a high quality trainer sprite or fallback.
+                        // Let's use a generic Red/Ash style sprite if possible, or just a placeholder 'trainer' logic.
+                        // Actually, user asked for "Ash" (Xiaozhi).
+                        // Let's try a common sprite resource.
+                        srcSet="https://play.pokemonshowdown.com/sprites/trainers/ash.png"
+                        alt="Ash"
+                        className="w-full h-full object-contain pixelated drop-shadow-lg"
+                        onError={(e) => {
+                            // Fallback to User icon if image fails
+                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.parentElement?.classList.add('fallback-icon');
+                        }}
+                    />
+                    <User className="hidden fallback-icon:block w-8 h-8 text-white drop-shadow-lg fill-white" />
                   </div>
                 )}
               </div>
