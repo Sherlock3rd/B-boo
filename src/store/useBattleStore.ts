@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Pokemon } from '@/types';
 import { TYPE_CHART } from '@/data/constants';
+import { BATTLE_WIDTH, BATTLE_HEIGHT, getDistance, isInRange, findBestMoveTarget, getNextStep } from '@/utils/battleUtils';
 
 export interface BattleUnit extends Pokemon {
   instanceId: string; // Unique ID for this battle instance
@@ -48,8 +49,10 @@ interface BattleState {
 }
 
 const BASE_ACTION_DELAY = 10000;
-export const BATTLE_WIDTH = 8;
-export const BATTLE_HEIGHT = 6;
+// Re-export constants from Utils to avoid circular deps if Utils imported constants from here (which it shouldn't)
+// But to be safe, let's keep them here or import them. 
+// Ideally define in constants.ts but for now matching utils.
+export { BATTLE_WIDTH, BATTLE_HEIGHT } from '@/utils/battleUtils';
 
 export const useBattleStore = create<BattleState>((set, get) => ({
   isActive: false,
@@ -72,8 +75,8 @@ export const useBattleStore = create<BattleState>((set, get) => ({
       team,
       isDead: false,
       position: {
-        x: team === 'player' ? 1 : BATTLE_WIDTH - 2, // Player at x=1, Enemy at x=6 (Width-2)
-        y: index + 1, // Simple vertical distribution 1, 2, 3...
+        x: team === 'player' ? 1 : BATTLE_WIDTH - 2, // Player at x=1, Enemy at x=14 (Width 16)
+        y: index + 4, // Center vertically roughly (4,5,6,7 out of 12)
       },
       moveRange: p.moveRange || 3, // Default 3
       attackRange: p.attackRange || 1, // Default 1
@@ -158,70 +161,67 @@ export const useBattleStore = create<BattleState>((set, get) => ({
         if (!currentActor || currentActor.isDead) return;
 
         // --- AI LOGIC (Reused) ---
-        // 1. Identify Targets
-        const targets = units.filter(u => u.team !== currentActor.team && !u.isDead);
-        if (targets.length === 0) return; // Win condition handled at end
+        // 1. Select Best Skill (Simplified: Random capable skill or just random)
+        // Ideally we pick skill first to know range, but for now we assume default attack range or max skill range.
+        // Let's use the unit's base 'attackRange' as the primary engagement distance.
+        const skill = currentActor.skills[Math.floor(Math.random() * currentActor.skills.length)];
+        // Use skill range if available, else fallback to unit range
+        const effectiveRange = skill?.range ?? currentActor.attackRange;
 
-        // 2. Find Closest Target
+        // 2. Identify Targets
+        const targets = units.filter(u => u.team !== currentActor.team && !u.isDead);
+        if (targets.length === 0) return; 
+
+        // 3. Find Closest Target
         let closestTarget = targets[0];
         let minDistance = Infinity;
-        const getDist = (p1: {x:number, y:number}, p2: {x:number, y:number}) => Math.abs(p1.x - p2.x) + Math.abs(p1.y - p2.y);
 
         targets.forEach(t => {
-            const d = getDist(currentActor.position, t.position);
+            const d = getDistance(currentActor.position, t.position);
             if (d < minDistance) {
                 minDistance = d;
                 closestTarget = t;
             }
         });
 
-        // 3. Move Logic
-        let movesLeft = currentActor.moveRange;
-        const attackRange = currentActor.attackRange;
+        // Calculate target threat range (Max of attackRange or any skill range)
+        const targetMaxRange = Math.max(
+            closestTarget.attackRange || 1,
+            ...(closestTarget.skills?.map(s => s.range) || [])
+        );
+
+        // 4. Move Logic
+        // Calculate where we want to be
+        const occupied = new Set(units.filter(u => !u.isDead).map(u => `${u.position.x},${u.position.y}`));
         let newPos = { ...currentActor.position };
 
-        while (minDistance > attackRange && movesLeft > 0) {
-            const dx = closestTarget.position.x - newPos.x;
-            const dy = closestTarget.position.y - newPos.y;
-            let nextX = newPos.x;
-            let nextY = newPos.y;
-            
-            if (Math.abs(dx) >= Math.abs(dy)) nextX += dx > 0 ? 1 : -1;
-            else nextY += dy > 0 ? 1 : -1;
+        const currentInRange = isInRange(currentActor.position, closestTarget.position, effectiveRange);
+        const currentIsSafe = !isInRange(currentActor.position, closestTarget.position, targetMaxRange);
 
-            const isOccupied = units.some(u => !u.isDead && u.position.x === nextX && u.position.y === nextY);
-            if (!isOccupied) {
-                newPos = { x: nextX, y: nextY };
-                movesLeft--;
-                minDistance = getDist(newPos, closestTarget.position);
-            } else {
-                 // Try alt axis
-                 let altX = newPos.x;
-                 let altY = newPos.y;
-                 if (Math.abs(dx) >= Math.abs(dy)) { if (dy !== 0) altY += dy > 0 ? 1 : -1; }
-                 else { if (dx !== 0) altX += dx > 0 ? 1 : -1; }
-                 
-                 const isAltOccupied = units.some(u => !u.isDead && u.position.x === altX && u.position.y === altY);
-                 if (!isAltOccupied && (altX !== newPos.x || altY !== newPos.y)) {
-                     newPos = { x: altX, y: altY };
-                     movesLeft--;
-                     minDistance = getDist(newPos, closestTarget.position);
-                 } else {
-                     break;
-                 }
-            }
+        // If not in range OR not safe (and we might find a safe spot), try to move
+        if (!currentInRange || !currentIsSafe) {
+             // Find ideal tile to attack from
+             const idealPos = findBestMoveTarget(currentActor, closestTarget, effectiveRange, occupied, targetMaxRange);
+             
+             if (idealPos) {
+                 // Move towards idealPos
+                 // We might not reach it in one turn if moveRange is low
+                 newPos = getNextStep(currentActor.position, idealPos, currentActor.moveRange, occupied);
+             } else if (!currentInRange) {
+                 // No valid tile found (blocked?), try simple approach towards enemy
+                 newPos = getNextStep(currentActor.position, closestTarget.position, currentActor.moveRange, occupied);
+             }
         }
         
-        // Update position in units array immediately so next actor sees it occupied
+        // Update position immediately
         units = units.map(u => u.instanceId === currentActor.instanceId ? { ...u, position: newPos } : u);
         
-        // 4. Attack Logic
+        // 5. Attack Logic
         let logMsg = '';
         let damage = 0;
         
-        if (minDistance <= attackRange) {
-             const skill = currentActor.skills[Math.floor(Math.random() * currentActor.skills.length)];
-             
+        // Check range again after move
+        if (isInRange(newPos, closestTarget.position, effectiveRange)) {
              if (skill) {
                // Add Visual Effect
                const effectId = `vfx-${Date.now()}-${Math.random()}`;

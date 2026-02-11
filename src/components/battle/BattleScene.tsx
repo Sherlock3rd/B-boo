@@ -15,7 +15,6 @@ const getElementColor = (element: string) => {
     }
 };
 
-// ... (Projectile and FloatUp components remain the same)
 const Projectile: React.FC<{ effect: VisualEffect; onComplete: () => void }> = ({ effect, onComplete }) => {
     const [started, setStarted] = useState(false);
 
@@ -27,15 +26,15 @@ const Projectile: React.FC<{ effect: VisualEffect; onComplete: () => void }> = (
     }, []);
 
     const sourceStyle: React.CSSProperties = {
-        left: `calc(8px + (100% - 16px) / ${BATTLE_WIDTH} * ${effect.sourcePos.x - 1})`,
-        top: `calc(8px + (100% - 16px) / ${BATTLE_HEIGHT} * ${effect.sourcePos.y - 1})`,
+        left: `calc(8px + (100% - 16px) / ${BATTLE_WIDTH} * ${effect.sourcePos.x})`,
+        top: `calc(8px + (100% - 16px) / ${BATTLE_HEIGHT} * ${effect.sourcePos.y})`,
         opacity: 0,
         transform: 'scale(0.5)'
     };
 
     const targetStyle: React.CSSProperties = {
-        left: `calc(8px + (100% - 16px) / ${BATTLE_WIDTH} * ${effect.targetPos.x - 1})`,
-        top: `calc(8px + (100% - 16px) / ${BATTLE_HEIGHT} * ${effect.targetPos.y - 1})`,
+        left: `calc(8px + (100% - 16px) / ${BATTLE_WIDTH} * ${effect.targetPos.x})`,
+        top: `calc(8px + (100% - 16px) / ${BATTLE_HEIGHT} * ${effect.targetPos.y})`,
         opacity: 1,
         transform: 'scale(1)'
     };
@@ -71,8 +70,8 @@ const FloatUp: React.FC<{ effect: VisualEffect; children: React.ReactNode; onCom
                 effect.type === 'heal' ? "text-green-400" : "text-yellow-400"
             )}
             style={{
-                left: `calc(8px + (100% - 16px) / ${BATTLE_WIDTH} * ${effect.targetPos.x - 1})`,
-                top: `calc(8px + (100% - 16px) / ${BATTLE_HEIGHT} * ${effect.targetPos.y - 1})`,
+                left: `calc(8px + (100% - 16px) / ${BATTLE_WIDTH} * ${effect.targetPos.x})`,
+                top: `calc(8px + (100% - 16px) / ${BATTLE_HEIGHT} * ${effect.targetPos.y})`,
                 transform: started ? 'translateY(-30px)' : 'translateY(0)',
                 opacity: started ? 0 : 1,
                 transitionDuration: `${effect.duration}ms`
@@ -162,6 +161,63 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
   const [showCapture, setShowCapture] = useState(false);
   const [capturing, setCapturing] = useState(false);
 
+  // Camera State
+  const [cameraState, setCameraState] = useState({ x: BATTLE_WIDTH / 2, y: BATTLE_HEIGHT / 2, zoom: 1 });
+
+  // Update Camera to follow battle center and adapt zoom
+  useEffect(() => {
+      if (!isActive) return;
+
+      const livingUnits = units.filter(u => !u.isDead);
+      if (livingUnits.length === 0) return;
+
+      // Calculate Bounding Box
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      
+      livingUnits.forEach(u => {
+          if (u.position.x < minX) minX = u.position.x;
+          if (u.position.x > maxX) maxX = u.position.x;
+          if (u.position.y < minY) minY = u.position.y;
+          if (u.position.y > maxY) maxY = u.position.y;
+      });
+
+      // Add padding (in grid cells)
+      const PADDING_X = 2;
+      const PADDING_Y = 2;
+
+      const spreadX = Math.max(4, (maxX - minX) + PADDING_X * 2); // Minimum 4 width
+      const spreadY = Math.max(3, (maxY - minY) + PADDING_Y * 2); // Minimum 3 height
+
+      // Calculate Center
+      const targetX = (minX + maxX) / 2;
+      const targetY = (minY + maxY) / 2;
+
+      // Calculate Zoom to fit spread
+      // We want to fit spreadX into BATTLE_WIDTH and spreadY into BATTLE_HEIGHT
+      const zoomX = BATTLE_WIDTH / spreadX;
+      const zoomY = BATTLE_HEIGHT / spreadY;
+      
+      // Choose the smaller zoom to ensure fit (contain)
+      // Clamp zoom between 1.0 (fit full map) and 2.5 (close up)
+      const targetZoom = Math.min(2.5, Math.max(1.0, Math.min(zoomX, zoomY)));
+
+      setCameraState({ x: targetX, y: targetY, zoom: targetZoom });
+  }, [units, isActive]);
+
+  // Calculate CSS Transform
+  // Visible area dimensions at current zoom
+  const visibleW = BATTLE_WIDTH / cameraState.zoom;
+  const visibleH = BATTLE_HEIGHT / cameraState.zoom;
+  
+  // Clamp Camera position so we don't show out-of-bounds (black bars)
+  const clampedX = Math.max(visibleW / 2, Math.min(BATTLE_WIDTH - visibleW / 2, cameraState.x));
+  const clampedY = Math.max(visibleH / 2, Math.min(BATTLE_HEIGHT - visibleH / 2, cameraState.y));
+
+  const transformStyle: React.CSSProperties = {
+      transform: `scale(${cameraState.zoom}) translate(${(BATTLE_WIDTH / 2 - clampedX) * (100 / BATTLE_WIDTH)}%, ${(BATTLE_HEIGHT / 2 - clampedY) * (100 / BATTLE_HEIGHT)}%)`,
+      transition: 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+  };
+
   // Auto-battle loop
   useEffect(() => {
     if (!isActive || isPaused || winner) return;
@@ -184,19 +240,7 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
   
   useEffect(() => {
       if (showCapture && !catchableTarget) {
-          // If we are showing capture, we should allow user to select ANY surviving enemy?
-          // Or just one random one?
-          // User request was "limit capture to one random survivor" previously.
-          // BUT wait, if we are in this state, the user should be able to click on the list.
-          
-          // The previous logic was: "Select a random catchable enemy" and set it as `catchableTarget`.
-          // Then pass `[catchableTarget]` to `CaptureInterface`.
-          // This effectively forces the user to only see ONE option.
-          
-          // Is the issue that `catchableTarget` is not being set correctly?
-          const enemyUnits = units.filter(u => u.team === 'enemy'); // Should we filter dead ones? Maybe capture dead ones is fine in Pokemon logic? usually no. 
-          // Let's assume we capture ANY enemy that was in battle (dead or alive).
-          
+          const enemyUnits = units.filter(u => u.team === 'enemy'); 
           if (enemyUnits.length > 0) {
               const randomEnemy = enemyUnits[Math.floor(Math.random() * enemyUnits.length)];
               setCatchableTarget(randomEnemy);
@@ -204,17 +248,6 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
       }
   }, [showCapture, units, catchableTarget]);
 
-  // Capture Interface Component needs to handle selection properly
-  // In `CaptureInterface`, we have `const [selectedId, setSelectedId] = useState<string | null>(null);`
-  // But we pass `enemies={[catchableTarget]}` which is an array of 1.
-  // The user must CLICK that one enemy to select it (setting `selectedId`).
-  // If they don't click, `selectedId` is null, and button is disabled.
-  
-  // FIX: Auto-select the single target if there is only one.
-  // Or ensure the click works.
-  
-  // Let's modify CaptureInterface to auto-select if only 1 enemy.
-  
   const handleCapture = (target: BattleUnit) => {
       // Deduct Ball
       const ball = inventory.find(i => i.id === 'pokeball');
@@ -334,15 +367,18 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
         </div>
 
       {/* Battle Field Container */}
-      <div className="flex-1 flex items-center justify-center z-10 p-4 overflow-hidden">
+      <div className="flex-1 flex items-center justify-center z-10 p-4 overflow-hidden relative">
+        {/* Mask/Viewport Container */}
         <div 
-            className="relative bg-slate-800/50 p-2 rounded-lg border border-slate-700 shadow-2xl"
+            className="relative bg-slate-800/50 rounded-lg border border-slate-700 shadow-2xl overflow-hidden"
             style={{
                 width: '100%',
                 maxWidth: '600px', // Limit width for better aspect ratio
                 aspectRatio: `${BATTLE_WIDTH}/${BATTLE_HEIGHT}`
             }}
         >
+          {/* Transform Layer (Camera) */}
+          <div className="w-full h-full origin-center will-change-transform" style={transformStyle}>
             {/* 1. Grid Layer (Background) */}
             <div 
                 className="absolute inset-0 grid gap-1 p-2"
@@ -352,14 +388,18 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
                 }}
             >
                 {Array.from({ length: BATTLE_WIDTH * BATTLE_HEIGHT }).map((_, idx) => {
-                    const x = (idx % BATTLE_WIDTH) + 1; // 1-based x
-                    const y = Math.floor(idx / BATTLE_WIDTH) + 1; // 1-based y
+                    const x = (idx % BATTLE_WIDTH); // 0-based x
+                    const y = Math.floor(idx / BATTLE_WIDTH); // 0-based y
+                    
+                    // Highlight active unit's range if selected/active?
+                    // For now simple grid
+                    
                     return (
                         <div 
                             key={`grid-${x}-${y}`} 
                             className="relative border border-white/5 bg-white/5 rounded-sm flex items-center justify-center overflow-hidden"
                         >
-                            <span className="absolute top-0 left-1 text-[8px] text-gray-600 font-mono select-none">{x},{y}</span>
+                            {/* <span className="absolute top-0 left-1 text-[8px] text-gray-600 font-mono select-none">{x},{y}</span> */}
                         </div>
                     );
                 })}
@@ -367,19 +407,7 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
 
             {/* 2. Unit Layer (Overlays) */}
             <div className="absolute inset-0 p-2 pointer-events-none"> 
-                {/* Need same padding/gap structure to align perfectly. 
-                    Best way is to use percentage based positioning. 
-                    Grid gap makes it tricky. 
-                    Simpler approach: Calculate % positions assuming uniform grid.
-                */}
                 {units.filter(u => !u.isDead).map(unit => {
-                     // Calculate position percentage
-                     // 1-based index to 0-based for calc
-                     // Width of one cell = 100% / WIDTH
-                     // We need to account for gap... 
-                     // Actually, if we use the same grid container for units but with gridColumn/Row start, 
-                     // CSS Grid handles the gaps for us!
-                     
                      return (
                         <div
                             key={unit.instanceId}
@@ -388,11 +416,10 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
                                 batchActorIds.includes(unit.instanceId) ? "z-30 scale-110" : "z-10"
                             )}
                             style={{
-                                width: `calc((100% - 16px) / ${BATTLE_WIDTH} - 4px)`, // Approx width: (Total - Padding) / Count - Gap
+                                width: `calc((100% - 16px) / ${BATTLE_WIDTH} - 4px)`, 
                                 height: `calc((100% - 16px) / ${BATTLE_HEIGHT} - 4px)`,
-                                left: `calc(8px + (100% - 16px) / ${BATTLE_WIDTH} * ${unit.position.x - 1})`,
-                                top: `calc(8px + (100% - 16px) / ${BATTLE_HEIGHT} * ${unit.position.y - 1})`,
-                                // Note: The gap logic in calc is simplified, might be slightly off pixel-perfectly but good for animation
+                                left: `calc(8px + (100% - 16px) / ${BATTLE_WIDTH} * ${unit.position.x})`,
+                                top: `calc(8px + (100% - 16px) / ${BATTLE_HEIGHT} * ${unit.position.y})`,
                             }}
                         >
                             {/* Sprite */}
@@ -439,9 +466,6 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
                         const isBuff = effect.type === 'buff';
                         const isHeal = effect.type === 'heal';
                         
-                        // Simple animation using CSS keyframes or transition?
-                        // React key-based mounting triggers animation
-                        
                         return (
                             <div key={effect.id} className="absolute inset-0 overflow-hidden pointer-events-none">
                                 {/* Projectile: Moves from Source to Target */}
@@ -458,14 +482,12 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
                                     )}
                                     style={{
                                         // 3x3 area approx. 
-                                        // Logic: 3 cells width + 2 gaps. 
-                                        // But since we use % based calc: (Total / Width) * 3
                                         width: `calc(((100% - 16px) / ${BATTLE_WIDTH}) * 3)`,
                                         height: `calc(((100% - 16px) / ${BATTLE_HEIGHT}) * 3)`,
-                                        // Center on target (x-1) then shift left by 1 cell width
-                                        left: `calc(8px + ((100% - 16px) / ${BATTLE_WIDTH}) * (${effect.targetPos.x - 1} - 1))`,
-                                        top: `calc(8px + ((100% - 16px) / ${BATTLE_HEIGHT}) * (${effect.targetPos.y - 1} - 1))`,
-                                        animationIterationCount: 1, // Ensure it plays only once!
+                                        // Center on target then shift left by 1 cell width
+                                        left: `calc(8px + ((100% - 16px) / ${BATTLE_WIDTH}) * (${effect.targetPos.x} - 1))`,
+                                        top: `calc(8px + ((100% - 16px) / ${BATTLE_HEIGHT}) * (${effect.targetPos.y} - 1))`,
+                                        animationIterationCount: 1, 
                                     }}
                                     onAnimationEnd={() => clearEffect(effect.id)}
                                 />
@@ -482,7 +504,7 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
                     })}
                 </div>
             </div>
-
+          </div>
         </div>
       </div>
 

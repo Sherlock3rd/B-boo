@@ -8,6 +8,7 @@ interface PlayerState extends Player {
   removePokemon: (id: string) => void;
   moveToTeam: (pokemonId: string) => void;
   moveToStorage: (pokemonId: string) => void;
+  cheatUnlockAll: (allPokemon: Pokemon[]) => void;
   addItem: (item: Item) => void;
   removeItem: (itemId: string, count: number) => void;
   addGold: (amount: number) => void;
@@ -68,6 +69,25 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       team: state.team.filter(p => p.id !== pokemonId),
       storage: [...state.storage, pokemon]
     };
+  }),
+
+  cheatUnlockAll: (allPokemon: Pokemon[]) => set((state) => {
+      // 1. Unlock all pokedex
+      const allIds = allPokemon.map(p => p.id);
+      
+      // 2. Add one of each to storage (avoid duplicates if needed, but for cheat simply adding is fine)
+      // We need to clone them to have unique instance properties if they were battle units, 
+      // but here they are base data. We should probably give them unique IDs if we want to manage them individually.
+      const newStorageItems = allPokemon.map(p => ({
+          ...p,
+          id: `${p.id}-cheat-${Date.now()}-${Math.random()}`, // Unique ID for storage instance
+          // Reset stats to base if needed, but they are already base in DB
+      }));
+
+      return {
+          pokedex: Array.from(new Set([...state.pokedex, ...allIds])),
+          storage: [...state.storage, ...newStorageItems]
+      };
   }),
 
   addItem: (item) => set((state) => {
