@@ -22,14 +22,14 @@ interface MapState {
 export const useMapStore = create<MapState>((set, get) => ({
   currentZoneId: 1,
   grid: [],
-  playerPosition: { x: Math.floor(MAP_WIDTH / 4), y: Math.floor(MAP_HEIGHT / 2) }, // Start in Initial Plateau
+  playerPosition: { x: 2, y: 2 }, // Start in Camp Center
 
   initMap: (zoneId) => {
     const grid = generateMap(zoneId);
     set({ 
       currentZoneId: zoneId, 
       grid,
-      playerPosition: { x: Math.floor(MAP_WIDTH / 4), y: Math.floor(MAP_HEIGHT / 2) } // Start in Initial Plateau
+      playerPosition: { x: 2, y: 2 } // Start in Camp Center
     });
   },
 
@@ -67,6 +67,10 @@ export const useMapStore = create<MapState>((set, get) => ({
 
   checkEncounter: () => {
     const { playerPosition, grid } = get();
+    // Safety check: No encounters in Camp Zone (0,0 to 4,4)
+    if (playerPosition.x < 5 && playerPosition.y < 5) {
+        return false;
+    }
     const cell = grid[playerPosition.y][playerPosition.x];
     return !!cell.hasEnemy;
   },

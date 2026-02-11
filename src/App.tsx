@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { GridMap } from './components/map/GridMap';
 import { BattleScene } from './components/battle/BattleScene';
 import { Pokedex } from './components/menu/Pokedex';
@@ -5,18 +6,66 @@ import { TeamEdit } from './components/menu/TeamEdit';
 import { useGameFlowStore } from './store/useGameFlowStore';
 import { useBattleStore } from './store/useBattleStore';
 import { usePlayerStore } from './store/usePlayerStore';
+import { useMapStore } from './store/useMapStore';
+import { CampModal } from './components/camp/CampModal'; // To be created
+
+// Passive Generation Ticker
+const useGameTicker = () => {
+    // Need to use getters inside interval or access via store.getState() to get fresh values
+    // Using destructuring here captures the INITIAL values in closure, which is why it fails!
+    
+    useEffect(() => {
+        const interval = setInterval(() => {
+            const now = Date.now();
+            const second = Math.floor(now / 1000);
+            
+            // Access FRESH state directly
+            const { buildings, addResources } = usePlayerStore.getState();
+
+            // Stored Mana Generation: 1 per second (Base)
+            // Use 'storedMana' field in addResources
+            addResources({ storedMana: 1 });
+
+            // Lumber Mill: Every 10s if assigned
+            if (buildings.lumber_mill.assignedPokemonId && second % 10 === 0) {
+                console.log("Adding Passive Wood");
+                addResources({ wood: 1 });
+            }
+
+            // Mine: Every 20s if assigned
+            if (buildings.mine.assignedPokemonId && second % 20 === 0) {
+                console.log("Adding Passive Ore");
+                addResources({ ore: 1 });
+            }
+            
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, []);
+};
 
 function App() {
-  const { scene, setScene } = useGameFlowStore();
+  const { scene, setScene, encounterLocation, clearEncounterLocation, activeBuilding, setBuildingInteraction } = useGameFlowStore();
   const { endBattle, units } = useBattleStore();
-  const { addPokemon } = usePlayerStore();
+  const { addPokemon, gainExp, buildings, upgradeBuilding } = usePlayerStore(); // Added methods
+  const { clearEncounter, movePlayer, teleportPlayer } = useMapStore();
+
+  // Run Ticker
+  useGameTicker();
 
   const handleBattleEnd = (result: 'player' | 'enemy') => {
     if (result === 'player') {
-      // Capture logic handled in BattleScene now
-      // alert('Victory!'); 
+      // Victory: Clear the enemy from the map
+      if (encounterLocation) {
+          clearEncounter(encounterLocation.x, encounterLocation.y);
+          clearEncounterLocation();
+      }
+      // Gain Exp (100 per kill)
+      gainExp(100);
     } else {
-        alert('You were defeated...');
+        alert('You were defeated... retreating to Camp!');
+        // Defeat: Teleport to Camp Center (Safety)
+        teleportPlayer(2, 2);
     }
     
     endBattle();
@@ -30,6 +79,14 @@ function App() {
         {scene === 'battle' && <BattleScene onBattleEnd={handleBattleEnd} />}
         {scene === 'menu' && <Pokedex />}
         {scene === 'team' && <TeamEdit />}
+
+        {/* Camp Interaction Modal */}
+        {activeBuilding && (
+            <CampModal 
+                type={activeBuilding} 
+                onClose={() => setBuildingInteraction(null)} 
+            />
+        )}
       </div>
     </div>
   );

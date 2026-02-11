@@ -16,9 +16,24 @@ export const generateMap = (_zoneId: number): GridCell[][] => {
       let hasEnemy = false;
       let enemyCount = 0;
       let enemyGroup: Pokemon[] = [];
+      let hasBuilding = false;
+      let buildingType = undefined;
 
-      // 1. Terrain Generation
-      if (x < SPLIT_X) {
+      // 0. Camp Zone (0,0 to 4,4)
+      if (x < 5 && y < 5) {
+          type = 'camp_floor';
+          hasEnemy = false;
+          isWalkable = true;
+          
+          // Place Buildings
+          if (x === 2 && y === 2) { hasBuilding = true; buildingType = 'camp_center'; } // Center
+          else if (x === 0 && y === 2) { hasBuilding = true; buildingType = 'lumber_mill'; } // Left Edge
+          else if (x === 4 && y === 2) { hasBuilding = true; buildingType = 'mine'; } // Right Edge
+          else if (x === 2 && y === 0) { hasBuilding = true; buildingType = 'mana_well'; } // Top Edge
+          else if (x === 2 && y === 4) { hasBuilding = true; buildingType = 'workshop'; } // Bottom Edge
+          else if (x === 4 && y === 4) { hasBuilding = true; buildingType = 'tent'; } // Corner
+      }
+      else if (x < SPLIT_X) {
         // ZONE 1: Initial Plateau (Grass dominant)
         if (Math.random() < 0.1) {
              type = 'forest'; // Obstacles in plateau
@@ -51,7 +66,10 @@ export const generateMap = (_zoneId: number): GridCell[][] => {
       }
 
       // 3. Enemy Generation
-      if (isWalkable && x !== SPLIT_X) { // Don't spawn on divider
+      // Strictly NO enemies in Camp Zone (x < 5 && y < 5)
+      const isCampZone = x < 5 && y < 5;
+      
+      if (isWalkable && x !== SPLIT_X && !isCampZone) { // Don't spawn on divider or in camp
         hasEnemy = Math.random() < 0.05;
         if (hasEnemy) {
             let pool = WILD_POKEMON_POOL;
@@ -91,6 +109,8 @@ export const generateMap = (_zoneId: number): GridCell[][] => {
         hasEnemy,
         enemyCount,
         enemyGroup, // Store the pre-generated group
+        hasBuilding,
+        buildingType: buildingType as any,
       });
     }
     grid.push(row);

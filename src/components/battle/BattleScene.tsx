@@ -182,11 +182,11 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
       });
 
       // Add padding (in grid cells)
-      const PADDING_X = 2;
-      const PADDING_Y = 2;
+      const PADDING_X = 1; // Tighter padding
+      const PADDING_Y = 1;
 
-      const spreadX = Math.max(4, (maxX - minX) + PADDING_X * 2); // Minimum 4 width
-      const spreadY = Math.max(3, (maxY - minY) + PADDING_Y * 2); // Minimum 3 height
+      const spreadX = Math.max(5, (maxX - minX) + PADDING_X * 2); // Minimum 5 width
+      const spreadY = Math.max(4, (maxY - minY) + PADDING_Y * 2); // Minimum 4 height
 
       // Calculate Center
       const targetX = (minX + maxX) / 2;
@@ -198,8 +198,8 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
       const zoomY = BATTLE_HEIGHT / spreadY;
       
       // Choose the smaller zoom to ensure fit (contain)
-      // Clamp zoom between 1.0 (fit full map) and 2.5 (close up)
-      const targetZoom = Math.min(2.5, Math.max(1.0, Math.min(zoomX, zoomY)));
+      // Clamp zoom between 1.0 (fit full map) and 3.5 (very close up)
+      const targetZoom = Math.min(3.5, Math.max(1.0, Math.min(zoomX, zoomY)));
 
       setCameraState({ x: targetX, y: targetY, zoom: targetZoom });
   }, [units, isActive]);
@@ -231,7 +231,11 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
         // Delay slightly to show final kill
         setTimeout(() => setShowCapture(true), 1000);
     } else if (winner === 'enemy') {
-        setTimeout(() => onBattleEnd('enemy'), 2000);
+        // Wait 2 seconds then trigger callback to exit
+        const timer = setTimeout(() => {
+            onBattleEnd('enemy');
+        }, 2000);
+        return () => clearTimeout(timer);
     }
   }, [winner, onBattleEnd]);
 
@@ -412,7 +416,7 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
                         <div
                             key={unit.instanceId}
                             className={cn(
-                                "absolute transition-all duration-500 ease-in-out flex flex-col items-center justify-center p-1",
+                                "absolute transition-all duration-500 ease-in-out flex flex-col items-center justify-center",
                                 batchActorIds.includes(unit.instanceId) ? "z-30 scale-110" : "z-10"
                             )}
                             style={{
@@ -422,38 +426,35 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
                                 top: `calc(8px + (100% - 16px) / ${BATTLE_HEIGHT} * ${unit.position.y})`,
                             }}
                         >
+                            {/* Selection Ring (Base) */}
+                            <div className={cn(
+                                "absolute inset-0 rounded-full border-2 opacity-60",
+                                unit.team === 'player' ? "border-blue-400 bg-blue-500/10" : "border-red-400 bg-red-500/10"
+                            )} />
+
                             {/* Sprite */}
                             <img 
                                 src={unit.sprite} 
                                 alt={unit.name}
                                 className={cn(
-                                    "w-full h-full object-contain pixelated drop-shadow-lg",
-                                    unit.team === 'enemy' ? "scale-x-[-1]" : ""
-                                )} 
+                                    "w-full h-full object-contain relative z-10",
+                                    unit.team === 'enemy' && "scale-x-[-1]" // Flip enemy
+                                )}
                             />
-                            
-                            {/* Indicators */}
-                            <div className="absolute bottom-0 w-full px-1 mb-1">
-                                <div className="h-1 bg-gray-700 rounded-full overflow-hidden w-full">
-                                    <div 
-                                        className={cn("h-full transition-all duration-300", 
-                                            (unit.currentHp/unit.maxHp) > 0.5 ? "bg-green-500" : "bg-red-500"
-                                        )}
-                                        style={{ width: `${(unit.currentHp / unit.maxHp) * 100}%` }} 
-                                    />
-                                </div>
-                            </div>
 
-                            {/* Team Marker */}
-                            <div className={cn(
-                                "absolute top-1 right-1 w-2 h-2 rounded-full border border-black/50 shadow-sm",
-                                unit.team === 'player' ? "bg-blue-500" : "bg-red-500"
-                            )} />
+                            {/* Health Bar (Floating above) */}
+                            <div className="absolute -top-3 w-[120%] h-1.5 bg-gray-700 rounded-full overflow-hidden border border-black/50 z-20">
+                                <div 
+                                    className={cn(
+                                        "h-full transition-all duration-300",
+                                        unit.team === 'player' ? "bg-green-500" : "bg-red-500"
+                                    )}
+                                    style={{ width: `${(unit.currentHp / unit.maxHp) * 100}%` }}
+                                />
+                            </div>
                             
-                            {/* Action Ready Indicator */}
-                            {batchActorIds.includes(unit.instanceId) && (
-                                <div className="absolute inset-0 border-2 border-yellow-400 rounded animate-pulse shadow-[0_0_10px_rgba(250,204,21,0.5)]" />
-                            )}
+                            {/* Action Indicator (If active) */}
+                            {/* Removed by user request */}
                         </div>
                      );
                 })}

@@ -1,11 +1,9 @@
 import React from 'react';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { useGameFlowStore } from '@/store/useGameFlowStore';
-import { X, ArrowRight, ArrowLeft } from 'lucide-react';
+import { X, ArrowRight, ArrowLeft, Briefcase } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Pokemon, Skill } from '@/types';
-
-// ...
 
 const SkillTag = ({ skill }: { skill: Skill }) => (
     <div className="group relative px-2 py-1 bg-black/40 rounded text-[10px] text-gray-300 border border-white/5 hover:border-white/20 cursor-help">
@@ -33,17 +31,28 @@ const SkillTag = ({ skill }: { skill: Skill }) => (
     </div>
 );
 
-const PokemonCard = ({ pokemon, onClick, actionIcon }: { pokemon: Pokemon, onClick: () => void, actionIcon: React.ReactNode }) => (
+const PokemonCard = ({ pokemon, onClick, actionIcon, isWorking }: { pokemon: Pokemon, onClick: () => void, actionIcon: React.ReactNode, isWorking?: boolean }) => (
   <div 
-    className="relative flex flex-col p-2 bg-slate-800 rounded-lg border border-slate-700 mb-2 gap-2"
+    className={cn(
+        "relative flex flex-col p-2 bg-slate-800 rounded-lg border border-slate-700 mb-2 gap-2",
+        isWorking && "opacity-75 border-amber-900/50 bg-amber-950/10"
+    )}
   >
     <div className="flex items-center gap-3">
-        <div className="w-12 h-12 bg-slate-900 rounded-md border border-slate-600 shrink-0">
+        <div className="w-12 h-12 bg-slate-900 rounded-md border border-slate-600 shrink-0 relative">
           <img src={pokemon.sprite} alt={pokemon.name} className="w-full h-full object-contain pixelated" />
+          {isWorking && (
+              <div className="absolute inset-0 bg-black/60 flex items-center justify-center rounded-md">
+                  <Briefcase className="w-5 h-5 text-amber-500" />
+              </div>
+          )}
         </div>
         
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-bold truncate text-white">{pokemon.name}</div>
+          <div className="flex justify-between items-center">
+              <div className="text-sm font-bold truncate text-white">{pokemon.name}</div>
+              {isWorking && <span className="text-[9px] bg-amber-900 text-amber-200 px-1 rounded uppercase tracking-wider">Working</span>}
+          </div>
           <div className="flex gap-2 text-[10px] text-gray-400">
             <span className={cn(
                "px-1 rounded text-black font-bold",
@@ -59,7 +68,8 @@ const PokemonCard = ({ pokemon, onClick, actionIcon }: { pokemon: Pokemon, onCli
 
         <button 
           onClick={onClick}
-          className="p-2 bg-slate-700 hover:bg-slate-600 rounded-full transition-colors shrink-0"
+          disabled={isWorking}
+          className="p-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 disabled:text-slate-600 disabled:cursor-not-allowed rounded-full transition-colors shrink-0"
         >
           {actionIcon}
         </button>
@@ -75,8 +85,10 @@ const PokemonCard = ({ pokemon, onClick, actionIcon }: { pokemon: Pokemon, onCli
 );
 
 export const TeamEdit: React.FC = () => {
-  const { team, storage, moveToStorage, moveToTeam } = usePlayerStore();
+  const { team, storage, moveToStorage, moveToTeam, buildings } = usePlayerStore();
   const { setScene } = useGameFlowStore();
+
+  const isAssigned = (id: string) => Object.values(buildings).some(b => b.assignedPokemonId === id);
 
   return (
     <div className="h-full w-full bg-slate-900 text-white flex flex-col p-4 relative">
@@ -102,6 +114,7 @@ export const TeamEdit: React.FC = () => {
                 key={p.id} 
                 pokemon={p} 
                 onClick={() => moveToStorage(p.id)}
+                isWorking={isAssigned(p.id)}
                 actionIcon={<ArrowRight className="w-4 h-4 text-red-400" />}
               />
             ))
@@ -122,6 +135,7 @@ export const TeamEdit: React.FC = () => {
                 key={p.id} 
                 pokemon={p} 
                 onClick={() => moveToTeam(p.id)}
+                isWorking={isAssigned(p.id)}
                 actionIcon={<ArrowLeft className="w-4 h-4 text-green-400" />}
               />
             ))

@@ -1,14 +1,31 @@
 import React, { useEffect } from 'react';
 import { useMapStore } from '@/store/useMapStore';
 import { cn } from '@/lib/utils';
-import { User, Skull, Trees, Mountain, BookOpen, Users } from 'lucide-react';
-import { CellType } from '@/types';
+import { User, Skull, Trees, Mountain, BookOpen, Users, Home, Tent, Shovel, Axe, Droplet, Hammer, Star, Coins } from 'lucide-react';
+import { CellType, BuildingType } from '@/types';
 
-import { useGameFlowStore } from '@/store/useGameFlowStore';
-import { useBattleStore } from '@/store/useBattleStore';
-import { usePlayerStore } from '@/store/usePlayerStore';
-import { INITIAL_PLAYER_TEAM, WILD_POKEMON_POOL, INITIAL_PLATEAU_POOL, ISTVAN_V_POOL } from '@/data/pokemon';
-import { generatePokemon } from '@/utils/pokemonGenerator';
+// ...
+
+const BuildingIcon = ({ type }: { type: BuildingType }) => {
+    switch (type) {
+        case 'camp_center': return <Home className="w-6 h-6 text-yellow-400 drop-shadow-lg" />;
+        case 'lumber_mill': return <Axe className="w-5 h-5 text-amber-700" />;
+        case 'mine': return <Shovel className="w-5 h-5 text-stone-400" />;
+        case 'mana_well': return <Droplet className="w-5 h-5 text-blue-400 animate-pulse" />;
+        case 'workshop': return <Hammer className="w-5 h-5 text-orange-400" />;
+        case 'tent': return <Tent className="w-5 h-5 text-green-400" />;
+        default: return null;
+    }
+};
+
+const CellIcon = ({ type }: { type: CellType }) => {
+  switch (type) {
+    case 'forest': return <Trees className="w-4 h-4 text-green-900 opacity-50" />;
+    case 'mountain': return <Mountain className="w-4 h-4 text-stone-800 opacity-50" />;
+    case 'camp_floor': return null; // Clean floor for buildings
+    default: return null;
+  }
+};
 
 // Helper for cell styling
 const getCellColor = (type: CellType) => {
@@ -17,18 +34,17 @@ const getCellColor = (type: CellType) => {
     case 'water': return 'bg-blue-400';
     case 'forest': return 'bg-green-700';
     case 'mountain': return 'bg-stone-600';
+    case 'camp_floor': return 'bg-amber-900/40 border-amber-800/50';
     case 'grass':
     default: return 'bg-green-500';
   }
 };
 
-const CellIcon = ({ type }: { type: CellType }) => {
-  switch (type) {
-    case 'forest': return <Trees className="w-4 h-4 text-green-900 opacity-50" />;
-    case 'mountain': return <Mountain className="w-4 h-4 text-stone-800 opacity-50" />;
-    default: return null;
-  }
-};
+import { useGameFlowStore } from '@/store/useGameFlowStore';
+import { useBattleStore } from '@/store/useBattleStore';
+import { usePlayerStore } from '@/store/usePlayerStore';
+import { INITIAL_PLAYER_TEAM, WILD_POKEMON_POOL, INITIAL_PLATEAU_POOL, ISTVAN_V_POOL } from '@/data/pokemon';
+import { generatePokemon } from '@/utils/pokemonGenerator';
 
 import { MAP_WIDTH } from '@/data/constants';
 
@@ -38,7 +54,18 @@ export const GridMap: React.FC = () => {
   const { grid, playerPosition, movePlayer, initMap, checkEncounter, clearEncounter } = useMapStore();
   const { setScene } = useGameFlowStore();
   const { startBattle } = useBattleStore();
-  const { team, addPokemon } = usePlayerStore();
+  const { team, addPokemon, level, exp, maxExp, wood, ore, mana, maxMana, gold, buildings, storage, refillMana } = usePlayerStore();
+
+  // ...
+
+  // Helper to find worker assigned to a specific building
+  const getAssignedWorker = (buildingType: BuildingType) => {
+      const building = buildings[buildingType];
+      if (!building?.assignedPokemonId) return null;
+      // Search in storage first (workers are usually in storage if not in team? Or both?)
+      // Wait, workers can be in team too.
+      return [...team, ...storage].find(p => p.id === building.assignedPokemonId);
+  };
 
   // Viewport Settings
   const VIEWPORT_W = 9;
@@ -84,30 +111,29 @@ export const GridMap: React.FC = () => {
 
   // Check encounters after movement
   useEffect(() => {
+    // 0. Check for Camp Refill
+    const { x, y } = playerPosition;
+    const currentCell = grid[y]?.[x];
+    if (currentCell?.type === 'camp_floor') {
+        refillMana();
+    }
+
+    // 1. Check for Enemy Encounter (Only if not in camp)
     if (checkEncounter()) {
       const { x, y } = playerPosition;
       
-      // Use current team from store directly to ensure sync
-      // 'team' from usePlayerStore() hook is already up to date here
-      
-      const cell = grid[y]?.[x]; // Define cell here before using it! Add safety check
-      
+      const cell = grid[y]?.[x]; 
       if (!cell) {
-          // Should not happen given logic, but safe guard
           clearEncounter(x, y);
           return;
       }
       
-      // USE PRE-GENERATED ENEMY GROUP
       if (cell.enemyGroup && cell.enemyGroup.length > 0) {
-          // Clone them to ensure new instances
           const encounterEnemies = cell.enemyGroup.map(base => generatePokemon(base));
           startBattle(team, encounterEnemies);
       } else {
-          // Fallback if no pre-gen group (shouldn't happen with new mapGen)
           const count = cell.enemyCount || 1;
           const enemies = Array(count).fill(0).map(() => {
-              // Determine pool based on zone
               const pool = x < Math.floor(MAP_WIDTH / 2) ? INITIAL_PLATEAU_POOL : ISTVAN_V_POOL;
               const base = pool[Math.floor(Math.random() * pool.length)];
               return generatePokemon(base); 
@@ -115,11 +141,24 @@ export const GridMap: React.FC = () => {
           startBattle(team, enemies);
       }
       
+      useGameFlowStore.getState().setEncounterLocation(x, y);
       setScene('battle');
-      
-      clearEncounter(x, y);
     }
-  }, [playerPosition, checkEncounter, clearEncounter, startBattle, setScene, team]);
+  }, [playerPosition, checkEncounter, startBattle, setScene, team, grid, clearEncounter]);
+
+  const handleBuildingClick = (buildingType: BuildingType, buildingX: number, buildingY: number) => {
+      // Check Chebyshev distance (max of dx, dy) to be within 1 tile
+      // This allows clicking on diagonals and the tile itself
+      const dx = Math.abs(playerPosition.x - buildingX);
+      const dy = Math.abs(playerPosition.y - buildingY);
+      
+      // If we are ON the tile (dx=0, dy=0) or adjacent/diagonal (dx<=1, dy<=1)
+      if (dx <= 1 && dy <= 1) {
+          useGameFlowStore.getState().setBuildingInteraction(buildingType);
+      } else {
+          console.log("Too far to interact");
+      }
+  };
 
   if (grid.length === 0) return <div>Loading Map...</div>;
 
@@ -140,8 +179,46 @@ export const GridMap: React.FC = () => {
 
   return (
     <div className="flex flex-col items-center justify-center h-full w-full overflow-hidden bg-black relative">
-      {/* Zone HUD */}
-      <div className="absolute top-4 left-4 z-50 bg-black/60 px-4 py-2 rounded-lg border border-white/20 backdrop-blur-sm">
+      {/* HUD: Resources & Level */}
+      <div className="absolute top-0 left-0 right-0 z-50 p-2 flex flex-col gap-2 pointer-events-none">
+          {/* Top Bar: Level & Resources */}
+          <div className="flex justify-between items-start gap-2">
+              {/* Player Status */}
+              <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-700 backdrop-blur-sm flex flex-col gap-1 min-w-[120px]">
+                  <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center border border-yellow-500">
+                          <span className="font-bold text-yellow-400">{level}</span>
+                      </div>
+                      <div className="flex-1">
+                          <div className="text-xs text-white font-bold">Trainer</div>
+                          {/* EXP Bar */}
+                          <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden border border-black">
+                              <div className="h-full bg-blue-500 transition-all" style={{ width: `${(exp / maxExp) * 100}%` }} />
+                          </div>
+                      </div>
+                  </div>
+              </div>
+
+              {/* Resources */}
+              <div className="bg-slate-900/90 p-2 rounded-lg border border-slate-700 backdrop-blur-sm flex gap-3 text-xs font-bold shadow-lg">
+                  <div className="flex flex-col items-center">
+                      <div className="flex items-center gap-1 text-amber-600"><Axe className="w-3 h-3" /> {wood}</div>
+                  </div>
+                  <div className="flex flex-col items-center">
+                      <div className="flex items-center gap-1 text-stone-400"><Shovel className="w-3 h-3" /> {ore}</div>
+                  </div>
+                  <div className="flex flex-col items-center">
+                      <div className="flex items-center gap-1 text-blue-400"><Droplet className="w-3 h-3" /> {mana}/{maxMana}</div>
+                  </div>
+                  <div className="flex flex-col items-center border-l border-slate-700 pl-3">
+                      <div className="flex items-center gap-1 text-yellow-400"><Coins className="w-3 h-3" /> {gold}</div>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      {/* Zone HUD (Moved down slightly) */}
+      <div className="absolute bottom-4 left-4 z-40 bg-black/60 px-4 py-2 rounded-lg border border-white/20 backdrop-blur-sm">
           <h2 className="text-xl font-bold text-yellow-400 font-mono tracking-widest uppercase">
               {currentZoneName}
           </h2>
@@ -150,8 +227,8 @@ export const GridMap: React.FC = () => {
           </div>
       </div>
 
-      {/* UI Overlay */}
-      <div className="absolute top-4 right-4 z-50 flex flex-col gap-2">
+      {/* UI Overlay (Buttons) */}
+      <div className="absolute top-20 right-4 z-50 flex flex-col gap-2 pointer-events-auto">
         <button 
           onClick={() => setScene('team')}
           className="p-3 bg-green-600 rounded-full text-white shadow-lg hover:bg-green-500 transition-transform active:scale-95"
@@ -169,7 +246,7 @@ export const GridMap: React.FC = () => {
       </div>
 
       <div 
-        className="grid gap-1 bg-slate-900 p-2 rounded-lg shadow-2xl border-4 border-slate-700"
+        className="grid gap-1 bg-slate-900 p-2 rounded-lg shadow-2xl border-4 border-slate-700 mt-12"
         style={{
           gridTemplateColumns: `repeat(${VIEWPORT_W}, minmax(0, 1fr))`,
           width: 'fit-content',
@@ -201,6 +278,26 @@ export const GridMap: React.FC = () => {
               >
                 {/* Terrain Icon */}
                 <CellIcon type={cell.type} />
+                {/* Building Icon */}
+                {cell.hasBuilding && cell.buildingType && (
+                    <div 
+                        className="absolute inset-0 flex items-center justify-center z-10 animate-bounce-slow cursor-pointer hover:scale-110 transition-transform"
+                        onClick={() => handleBuildingClick(cell.buildingType!, cell.x, cell.y)}
+                    >
+                        <BuildingIcon type={cell.buildingType} />
+                        
+                        {/* Worker Pokemon (Floating nearby) */}
+                        {getAssignedWorker(cell.buildingType) && (
+                             <div className="absolute -top-3 -right-3 w-6 h-6 z-20 animate-pulse bg-slate-900/80 rounded-full border border-yellow-500 shadow-sm flex items-center justify-center">
+                                <img 
+                                    src={getAssignedWorker(cell.buildingType)!.sprite} 
+                                    alt="worker" 
+                                    className="w-5 h-5 object-contain pixelated"
+                                />
+                             </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Enemy */}
                 {cell.hasEnemy && !isPlayerHere && (

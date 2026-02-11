@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Pokemon } from '@/types';
 import { TYPE_CHART } from '@/data/constants';
 import { BATTLE_WIDTH, BATTLE_HEIGHT, getDistance, isInRange, findBestMoveTarget, getNextStep } from '@/utils/battleUtils';
+import { usePlayerStore } from '@/store/usePlayerStore';
 
 export interface BattleUnit extends Pokemon {
   instanceId: string; // Unique ID for this battle instance
@@ -75,7 +76,7 @@ export const useBattleStore = create<BattleState>((set, get) => ({
       team,
       isDead: false,
       position: {
-        x: team === 'player' ? 1 : BATTLE_WIDTH - 2, // Player at x=1, Enemy at x=14 (Width 16)
+        x: team === 'player' ? 4 : BATTLE_WIDTH - 5, // Player at x=4, Enemy at x=11 (Closer start)
         y: index + 4, // Center vertically roughly (4,5,6,7 out of 12)
       },
       moveRange: p.moveRange || 3, // Default 3
@@ -164,7 +165,28 @@ export const useBattleStore = create<BattleState>((set, get) => ({
         // 1. Select Best Skill (Simplified: Random capable skill or just random)
         // Ideally we pick skill first to know range, but for now we assume default attack range or max skill range.
         // Let's use the unit's base 'attackRange' as the primary engagement distance.
-        const skill = currentActor.skills[Math.floor(Math.random() * currentActor.skills.length)];
+        let skill = currentActor.skills[Math.floor(Math.random() * currentActor.skills.length)];
+
+        // Mana Consumption Logic for Player
+        if (currentActor.team === 'player') {
+            const { mana, spendResources } = usePlayerStore.getState();
+            if (mana > 0) {
+                // Consume 1 Mana per action
+                spendResources({ mana: 1 });
+            } else {
+                // Out of Mana! Force Struggle/Weak Attack
+                skill = { 
+                    id: 'struggle', 
+                    name: 'Struggle', 
+                    type: 'Normal', 
+                    power: 20, 
+                    category: 'Physical', 
+                    description: 'Out of mana!', 
+                    range: 1 
+                } as any;
+            }
+        }
+
         // Use skill range if available, else fallback to unit range
         const effectiveRange = skill?.range ?? currentActor.attackRange;
 

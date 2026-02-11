@@ -60,7 +60,8 @@ export interface Item {
   effect?: (target: Pokemon) => void;
 }
 
-export type CellType = 'empty' | 'wall' | 'grass' | 'water' | 'forest' | 'mountain';
+export type CellType = 'empty' | 'wall' | 'grass' | 'water' | 'forest' | 'mountain' | 'camp_floor';
+export type BuildingType = 'camp_center' | 'lumber_mill' | 'mine' | 'mana_well' | 'workshop' | 'tent';
 
 export interface GridCell {
   x: number;
@@ -72,6 +73,8 @@ export interface GridCell {
   enemyGroup?: Pokemon[]; // If hasEnemy is true
   hasResource?: boolean;
   resourceType?: string;
+  hasBuilding?: boolean;
+  buildingType?: BuildingType;
 }
 
 export interface GameState {
