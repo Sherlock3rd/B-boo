@@ -27,6 +27,7 @@ export const Workshop: React.FC = () => {
     const handleCraftPokeball = () => {
         if (spendResources(POKEBALL_COST)) {
             addItem({ id: 'pokeball', name: 'Poke Ball', count: 1, type: 'consumable' });
+            usePlayerStore.getState().showFloatingText("+1 Poke Ball", "red");
         }
     };
 

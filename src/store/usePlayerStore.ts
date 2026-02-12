@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Player, Pokemon, Item } from '@/types';
+import { getEvolutionTarget } from '@/utils/evolution';
 
 // Level 1-30 Exp Table
 const EXP_TABLE: number[] = [
@@ -41,6 +42,9 @@ interface PlayerState extends Player {
   pokedex: string[]; // Unlocked Pokemon IDs
   storage: Pokemon[]; // Pokemon not in team
   
+  // Visual Feedback State
+  floatingTextEvent: { id: number, text: string, color?: string } | null;
+
   // Actions
   addPokemon: (pokemon: Pokemon) => void;
   removePokemon: (id: string) => void;
@@ -52,6 +56,9 @@ interface PlayerState extends Player {
   addGold: (amount: number) => void;
   spendGold: (amount: number) => boolean;
   
+  // Helpers
+  getPokemonById: (id: string) => Pokemon | undefined;
+
   // New Actions
   gainExp: (amount: number) => void;
   addResources: (res: { wood?: number, ore?: number, mana?: number, storedMana?: number }) => void;
@@ -59,6 +66,9 @@ interface PlayerState extends Player {
   upgradeBuilding: (type: BuildingType) => void;
   assignPokemonToBuilding: (type: BuildingType, pokemonId: string | undefined) => void;
   refillMana: () => void;
+  showFloatingText: (text: string, color?: string) => void;
+  swapTeamSlots: (indexA: number, indexB: number) => void;
+  checkTeamEvolutions: () => void;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -88,58 +98,101 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       tent: { level: 1 }
   },
 
-  team: [],
+  team: [null, null, null, null],
   storage: [],
   pokedex: [],
   inventory: [
     { id: 'pokeball', name: 'Poke Ball', count: 5, type: 'consumable' }
   ],
-  gold: 0,
+  essence: 0,
   diamonds: 0,
+  
+  slotLevels: [1, 1, 1, 1],
+  pendingPlayerExp: 0,
+  pendingEssence: 0,
 
-  addPokemon: (pokemon) => set((state) => {
-    // 1. Add Species ID to Pokedex (assume pokemon.id is the species ID)
-    const newPokedex = state.pokedex.includes(pokemon.id) ? state.pokedex : [...state.pokedex, pokemon.id];
-    
-    // 2. Generate unique instance ID for storage/team
-    // Constraint: Pokemon level cannot exceed player level
-    const clampedLevel = Math.min(pokemon.level, state.level);
-    
-    const uniquePokemon = { 
-        ...pokemon, 
-        level: clampedLevel,
-        id: `${pokemon.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` 
-    };
+  gold: 0, // Deprecated
+  floatingTextEvent: null,
 
-    if (state.team.length < 4) {
-      return { team: [...state.team, uniquePokemon], pokedex: newPokedex };
-    }
-    // Send to storage if team is full
-    return { storage: [...state.storage, uniquePokemon], pokedex: newPokedex };
-  }),
+  getPokemonById: (id) => {
+      const { team, storage } = get();
+      return team.find(p => p && p.id === id) || storage.find(p => p.id === id);
+  },
+  
+  getPokemonLevel: (pokemonId) => {
+      const { team, slotLevels } = get();
+      const teamIndex = team.findIndex(p => p && p.id === pokemonId);
+      
+      if (teamIndex !== -1) {
+          return slotLevels[teamIndex];
+      }
+      
+      // If not in team (storage), use minimum slot level
+      return Math.min(...slotLevels);
+  },
 
-  removePokemon: (id) => set((state) => ({
-    team: state.team.filter((p) => p.id !== id),
-    storage: state.storage.filter((p) => p.id !== id),
-  })),
+  addPokemon: (pokemon) => {
+    set((state) => {
+      // 1. Add Species ID to Pokedex (assume pokemon.id is the species ID)
+      const newPokedex = state.pokedex.includes(pokemon.id) ? state.pokedex : [...state.pokedex, pokemon.id];
+      
+      // 2. Generate unique instance ID for storage/team
+      // Constraint: Pokemon level cannot exceed player level
+      const clampedLevel = Math.min(pokemon.level, state.level);
+      
+      const uniquePokemon = { 
+          ...pokemon, 
+          level: clampedLevel,
+          id: `${pokemon.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` 
+      };
 
-  moveToTeam: (pokemonId) => set((state) => {
-    // Check if Pokemon is assigned to a building
-    const isAssigned = Object.values(state.buildings).some(b => b.assignedPokemonId === pokemonId);
-    if (isAssigned) {
-        alert("This Pokemon is currently working in a building!");
-        return state;
-    }
+      const emptyIndex = state.team.findIndex(p => p === null);
+      if (emptyIndex !== -1) {
+          const newTeam = [...state.team];
+          newTeam[emptyIndex] = uniquePokemon;
+          return { team: newTeam, pokedex: newPokedex };
+      }
 
-    if (state.team.length >= 4) return state;
-    const pokemon = state.storage.find(p => p.id === pokemonId);
-    if (!pokemon) return state;
+      // Send to storage if team is full
+      return { storage: [...state.storage, uniquePokemon], pokedex: newPokedex };
+    });
+    get().checkTeamEvolutions();
+  },
 
+  removePokemon: (id) => set((state) => {
+    // Release Reward: 100 Essence
     return {
-      storage: state.storage.filter(p => p.id !== pokemonId),
-      team: [...state.team, pokemon]
+      team: state.team.map((p) => p && p.id === id ? null : p),
+      storage: state.storage.filter((p) => p.id !== id),
+      essence: state.essence + 100 // Add reward
     };
   }),
+
+  moveToTeam: (pokemonId) => {
+    set((state) => {
+      // Check if Pokemon is assigned to a building
+      const isAssigned = Object.values(state.buildings).some(b => b.assignedPokemonId === pokemonId);
+      if (isAssigned) {
+          alert("This Pokemon is currently working in a building!");
+          return state;
+      }
+
+      const emptyIndex = state.team.findIndex(p => p === null);
+      if (emptyIndex === -1) return state;
+
+      const pokemon = state.storage.find(p => p.id === pokemonId);
+      if (!pokemon) return state;
+
+      const newTeam = [...state.team];
+      newTeam[emptyIndex] = pokemon;
+
+      return {
+        storage: state.storage.filter(p => p.id !== pokemonId),
+        team: newTeam
+      };
+    });
+    get().checkTeamEvolutions();
+  },
 
   moveToStorage: (pokemonId) => set((state) => {
     // Check if Pokemon is assigned to a building
@@ -150,12 +203,20 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
 
     // Must have at least 1 pokemon in team
-    if (state.team.length <= 1) return state;
-    const pokemon = state.team.find(p => p.id === pokemonId);
+    const teamCount = state.team.filter(Boolean).length;
+    if (teamCount <= 1) return state;
+
+    const teamIndex = state.team.findIndex(p => p && p.id === pokemonId);
+    if (teamIndex === -1) return state;
+    
+    const pokemon = state.team[teamIndex];
     if (!pokemon) return state;
 
+    const newTeam = [...state.team];
+    newTeam[teamIndex] = null;
+
     return {
-      team: state.team.filter(p => p.id !== pokemonId),
+      team: newTeam,
       storage: [...state.storage, pokemon]
     };
   }),
@@ -194,18 +255,21 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     ).filter(i => i.count > 0),
   })),
 
-  addGold: (amount) => set((state) => ({ gold: state.gold + amount })),
-  spendGold: (amount) => {
-    const { gold } = get();
-    if (gold >= amount) {
-      set({ gold: gold - amount });
-      return true;
-    }
-    return false;
+  // New Essence Actions
+  addEssence: (amount) => set((state) => ({ essence: state.essence + amount })),
+  spendEssence: (amount) => {
+      const { essence } = get();
+      if (essence >= amount) {
+          set({ essence: essence - amount });
+          return true;
+      }
+      return false;
   },
 
-  // --- New Actions ---
-  
+  // Deprecated Gold Actions (Compat)
+  addGold: (amount) => set((state) => ({ essence: state.essence + amount })),
+  spendGold: (amount) => false,
+
   gainExp: (amount) => set((state) => {
       if (state.level >= state.maxLevel) return state;
 
@@ -231,7 +295,13 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       // Level 2: 60...
       const newMaxMana = 50 + (newLevel - 1) * 10;
 
-      return { level: newLevel, exp: newExp, maxExp: currentMaxExp, maxMana: newMaxMana };
+      return { 
+          level: newLevel, 
+          exp: newExp, 
+          maxExp: currentMaxExp, 
+          maxMana: newMaxMana,
+          floatingTextEvent: { id: Date.now(), text: `+${amount} EXP`, color: 'yellow' } 
+      };
   }),
 
   addResources: (res) => set((state) => ({
@@ -287,6 +357,125 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
               [type]: { ...building, assignedPokemonId: pokemonId }
           }
       };
-  })
+  }),
+
+  showFloatingText: (text, color) => set({
+      floatingTextEvent: { id: Date.now(), text, color }
+  }),
+  
+  // Idle System Logic
+  tick: () => set((state) => {
+      // Accumulate floating point values
+      const newPendingExp = state.pendingPlayerExp + 1;
+      const newPendingEssence = state.pendingEssence + 1;
+      
+      return {
+          pendingPlayerExp: newPendingExp,
+          pendingEssence: newPendingEssence
+      };
+  }),
+  
+  claimIdleRewards: () => {
+      const { pendingPlayerExp, pendingEssence, gainExp, addEssence } = get();
+      if (pendingPlayerExp >= 10) {
+          gainExp(Math.floor(pendingPlayerExp));
+          addEssence(Math.floor(pendingEssence));
+          set({ pendingPlayerExp: 0, pendingEssence: 0 });
+      }
+  },
+  
+  upgradeSlot: (slotIndex) => {
+      const { slotLevels, level, spendEssence } = get();
+      const currentSlotLevel = slotLevels[slotIndex];
+      
+      if (currentSlotLevel >= level) {
+          // Cannot exceed player level
+          return;
+      }
+      
+      // Cost Formula: 50 * 1.2^(Level-1)
+      const cost = Math.floor(50 * Math.pow(1.2, currentSlotLevel - 1));
+      
+      if (spendEssence(cost)) {
+          const newLevels = [...slotLevels] as [number, number, number, number];
+          newLevels[slotIndex] += 1;
+          set({ slotLevels: newLevels });
+          get().checkTeamEvolutions();
+      }
+  },
+  
+  swapTeamSlots: (indexA, indexB) => {
+      set((state) => {
+        if (indexA < 0 || indexA >= 4 || indexB < 0 || indexB >= 4) return state;
+        
+        const newTeam = [...state.team];
+        
+        if (indexA >= newTeam.length || indexB >= newTeam.length) return state;
+        
+        [newTeam[indexA], newTeam[indexB]] = [newTeam[indexB], newTeam[indexA]];
+        
+        return { team: newTeam };
+      });
+      get().checkTeamEvolutions();
+  },
+
+  checkTeamEvolutions: () => {
+      const { team, slotLevels, buildings } = get();
+      let hasChanges = false;
+      const newTeam = [...team];
+      const idMap: Record<string, string> = {};
+
+      newTeam.forEach((pokemon, index) => {
+          if (!pokemon) return;
+
+          let currentPokemon = pokemon;
+          let evolved = false;
+          // Slot levels might be longer than team, use index
+          const slotLevel = slotLevels[index] || 1;
+
+          while (true) {
+              const speciesId = currentPokemon.id.split('-')[0];
+              const target = getEvolutionTarget(speciesId, slotLevel);
+              
+              if (target) {
+                  const oldId = currentPokemon.id;
+                  const suffixIndex = oldId.indexOf('-');
+                  const suffix = suffixIndex !== -1 ? oldId.substring(suffixIndex) : `-${Date.now()}`;
+                  const newId = target.id + suffix;
+                  
+                  currentPokemon = {
+                      ...target,
+                      id: newId,
+                      level: target.level,
+                      exp: 0,
+                  };
+                  evolved = true;
+              } else {
+                  break;
+              }
+          }
+
+          if (evolved) {
+              hasChanges = true;
+              idMap[pokemon.id] = currentPokemon.id;
+              newTeam[index] = currentPokemon;
+          }
+      });
+
+      if (hasChanges) {
+          const newBuildings = { ...buildings };
+          let buildingsChanged = false;
+          (Object.keys(newBuildings) as BuildingType[]).forEach((key) => {
+              const b = newBuildings[key];
+              if (b.assignedPokemonId && idMap[b.assignedPokemonId]) {
+                  newBuildings[key] = { ...b, assignedPokemonId: idMap[b.assignedPokemonId] };
+                  buildingsChanged = true;
+              }
+          });
+
+          set({ team: newTeam, buildings: buildingsChanged ? newBuildings : buildings });
+          get().showFloatingText("Pokemon Evolved!", "gold");
+      }
+  }
 
 }));

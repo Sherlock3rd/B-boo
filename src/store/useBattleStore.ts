@@ -42,7 +42,7 @@ interface BattleState {
   isPaused: boolean;
 
   // Actions
-  startBattle: (playerTeam: Pokemon[], enemyTeam: Pokemon[]) => void;
+  startBattle: (playerTeam: (Pokemon | null)[], enemyTeam: Pokemon[]) => void;
   nextTurn: () => void;
   pauseBattle: (paused: boolean) => void;
   endBattle: () => void;
@@ -66,25 +66,73 @@ export const useBattleStore = create<BattleState>((set, get) => ({
   isPaused: false,
 
   startBattle: (playerTeam, enemyTeam) => {
+    // Filter out nulls from player team for battle initialization
+    const activePlayerTeam = playerTeam.filter((p): p is Pokemon => p !== null);
+    
     // Initialize units
-    const createUnit = (p: Pokemon, team: 'player' | 'enemy', index: number): BattleUnit => ({
-      ...p,
-      instanceId: `${team}-${p.id}-${Math.random()}`,
-      currentHp: p.stats.hp,
-      maxHp: p.stats.maxHp,
-      actionValue: BASE_ACTION_DELAY / p.stats.speed, // Initial delay
-      team,
-      isDead: false,
-      position: {
-        x: team === 'player' ? 4 : BATTLE_WIDTH - 5, // Player at x=4, Enemy at x=11 (Closer start)
-        y: index + 4, // Center vertically roughly (4,5,6,7 out of 12)
-      },
-      moveRange: p.moveRange || 3, // Default 3
-      attackRange: p.attackRange || 1, // Default 1
-    });
+    const createUnit = (p: Pokemon, team: 'player' | 'enemy', index: number): BattleUnit => {
+        // Calculate Effective Stats based on Level
+        // Formula: Base * (1 + (Level - 1) * 0.1) -> 10% growth per level
+        // We need to use the 'effective level' here.
+        // For Player Team: Level is determined by Slot Level (passed in or resolved)
+        // For Enemy Team: Level is fixed in generator.
+        
+        let effectiveLevel = p.level;
+        if (team === 'player') {
+            // Re-fetch effective level from store to ensure it's up-to-date with Slot Level
+            effectiveLevel = usePlayerStore.getState().getPokemonLevel(p.id);
+        }
+
+        const growthFactor = 1 + (effectiveLevel - 1) * 0.1;
+        
+        // Base stats are stored in p.stats. 
+        // NOTE: p.stats might ALREADY be scaled if it's a wild pokemon generated with a level.
+        // But for Player pokemon, p.stats are likely the capture-time stats (or base stats if we didn't update them).
+        // To be safe, we should probably store 'baseStats' in Pokemon type, but currently we overwrite 'stats'.
+        // Assuming 'p.stats' for player pokemon are their BASE stats (at capture level) is risky if we updated them.
+        // However, 'generatePokemon' scales stats.
+        // For Player Pokemon, we should probably recalculate from a 'base' if possible, or assume p.stats are current.
+        // ISSUE: If we just use p.stats, it reflects the stats at capture/generation.
+        // If slot level is higher, we need to scale UP.
+        // If slot level is lower, we need to scale DOWN.
+        // But we don't know the original level they were generated at easily without storing it.
+        // WORKAROUND: Assume p.stats are the stats at p.level.
+        // We want stats at effectiveLevel.
+        // Factor = (1 + (effective - 1) * 0.1) / (1 + (p.level - 1) * 0.1)
+        
+        const currentLevelFactor = 1 + (p.level - 1) * 0.1;
+        const targetLevelFactor = 1 + (effectiveLevel - 1) * 0.1;
+        const scaleRatio = targetLevelFactor / currentLevelFactor;
+
+        const effectiveStats = {
+            hp: Math.floor(p.stats.hp * scaleRatio),
+            maxHp: Math.floor(p.stats.maxHp * scaleRatio),
+            atk: Math.floor(p.stats.atk * scaleRatio),
+            def: Math.floor(p.stats.def * scaleRatio),
+            speed: Math.floor(p.stats.speed * scaleRatio),
+        };
+
+        return {
+          ...p,
+          level: effectiveLevel, // Update visual level
+          stats: effectiveStats, // Update stats for battle
+          instanceId: `${team}-${p.id}-${Math.random()}`,
+          currentHp: effectiveStats.maxHp, // Full HP start
+          maxHp: effectiveStats.maxHp,
+          actionValue: BASE_ACTION_DELAY / effectiveStats.speed,
+          team,
+          isDead: false,
+          position: {
+            x: team === 'player' ? 4 : BATTLE_WIDTH - 5,
+            y: index + 4,
+          },
+          moveRange: p.moveRange || 3,
+          attackRange: p.attackRange || 1,
+        };
+    };
 
     const units = [
-      ...playerTeam.map((p, i) => createUnit(p, 'player', i)),
+      ...activePlayerTeam.map((p, i) => createUnit(p, 'player', i)),
       ...enemyTeam.map((p, i) => createUnit(p, 'enemy', i))
     ];
 
@@ -343,7 +391,16 @@ export const useBattleStore = create<BattleState>((set, get) => ({
      return;
    }
    if (livingEnemies.length === 0) {
-     set({ isActive: false, winner: 'player', units, logs: [...logs, { id: 'end', message: 'You won!', type: 'info' }] });
+     const { addEssence, gainExp } = usePlayerStore.getState();
+     // Battle Victory Rewards: 100 Essence per enemy
+     const essenceReward = units.filter(u => u.team === 'enemy').length * 100;
+     addEssence(essenceReward);
+     
+     // Also give some EXP for winning
+     const expReward = 50; 
+     gainExp(expReward);
+
+     set({ isActive: false, winner: 'player', units, logs: [...logs, { id: 'end', message: `You won! Gained ${essenceReward} Essence & ${expReward} EXP!`, type: 'info' }] });
      return;
    }
 

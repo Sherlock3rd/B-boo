@@ -17,6 +17,26 @@ export const CampModal: React.FC<{ type: BuildingType; onClose: () => void }> = 
     const { buildings } = usePlayerStore();
     const building = buildings[type];
 
+    // If building data is missing (e.g. teleport_point has no building data in store), handle gracefully
+    // Teleport Points are not upgradeable buildings in player store, so they don't have 'level'.
+    // We should probably just return null or show a simple info modal, but for now let's prevent the crash.
+    if (!building) {
+        // If it's a teleport point, maybe we don't even want to show this modal?
+        // Or show a simple "Teleport Point" info.
+        if (type === 'teleport_point') {
+             return (
+                <div className="absolute inset-0 z-[60] bg-black/80 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-md shadow-2xl p-6 text-center">
+                        <h2 className="text-xl font-bold text-cyan-400 mb-2">Teleport Point</h2>
+                        <p className="text-gray-400 mb-4">A mystical beacon that allows instant travel.</p>
+                        <button onClick={onClose} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded text-white">Close</button>
+                    </div>
+                </div>
+             );
+        }
+        return null;
+    }
+
     // Close on ESC
     React.useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {

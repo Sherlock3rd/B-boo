@@ -43,14 +43,14 @@ export const POKEMON_DB: Record<string, Pokemon> = {
   },
   'charmeleon': {
     id: 'charmeleon', name: 'Charmeleon', element: 'Fire',
-    stats: { hp: 150, maxHp: 150, atk: 64, def: 58, speed: 80 },
+    stats: { hp: 250, maxHp: 250, atk: 100, def: 90, speed: 95 },
     skills: [EMBER, FLAME_BURST, TACKLE], level: 16, exp: 0,
     sprite: 'https://img.pokemondb.net/sprites/black-white/anim/normal/charmeleon.gif',
     moveRange: 3, attackRange: 1
   },
   'charizard': {
     id: 'charizard', name: 'Charizard', element: 'Fire',
-    stats: { hp: 200, maxHp: 200, atk: 84, def: 78, speed: 100 },
+    stats: { hp: 450, maxHp: 450, atk: 180, def: 150, speed: 130 },
     skills: [FLAME_BURST, FIRE_BLAST, TACKLE], level: 36, exp: 0,
     sprite: 'https://img.pokemondb.net/sprites/black-white/anim/normal/charizard.gif',
     moveRange: 4, attackRange: 3
@@ -80,14 +80,14 @@ export const POKEMON_DB: Record<string, Pokemon> = {
   },
   'wartortle': {
     id: 'wartortle', name: 'Wartortle', element: 'Water',
-    stats: { hp: 160, maxHp: 160, atk: 63, def: 80, speed: 58 },
+    stats: { hp: 270, maxHp: 270, atk: 110, def: 120, speed: 70 },
     skills: [WATER_GUN, BUBBLE, TACKLE], level: 16, exp: 0,
     sprite: 'https://img.pokemondb.net/sprites/black-white/anim/normal/wartortle.gif',
     moveRange: 3, attackRange: 1
   },
   'blastoise': {
     id: 'blastoise', name: 'Blastoise', element: 'Water',
-    stats: { hp: 220, maxHp: 220, atk: 83, def: 100, speed: 78 },
+    stats: { hp: 500, maxHp: 500, atk: 180, def: 200, speed: 100 },
     skills: [BUBBLE, HYDRO_PUMP, AQUA_RING], level: 36, exp: 0,
     sprite: 'https://img.pokemondb.net/sprites/black-white/anim/normal/blastoise.gif',
     moveRange: 2, attackRange: 4
@@ -117,14 +117,14 @@ export const POKEMON_DB: Record<string, Pokemon> = {
   },
   'ivysaur': {
     id: 'ivysaur', name: 'Ivysaur', element: 'Wind',
-    stats: { hp: 155, maxHp: 155, atk: 62, def: 63, speed: 60 },
+    stats: { hp: 260, maxHp: 260, atk: 110, def: 110, speed: 75 },
     skills: [VINE_WHIP, RAZOR_LEAF, TACKLE], level: 16, exp: 0,
     sprite: 'https://img.pokemondb.net/sprites/black-white/anim/normal/ivysaur.gif',
     moveRange: 3, attackRange: 1
   },
   'venusaur': {
     id: 'venusaur', name: 'Venusaur', element: 'Wind',
-    stats: { hp: 210, maxHp: 210, atk: 82, def: 83, speed: 80 },
+    stats: { hp: 480, maxHp: 480, atk: 170, def: 170, speed: 110 },
     skills: [RAZOR_LEAF, SOLAR_BEAM, HOWL], level: 36, exp: 0,
     sprite: 'https://img.pokemondb.net/sprites/black-white/anim/normal/venusaur.gif',
     moveRange: 2, attackRange: 3

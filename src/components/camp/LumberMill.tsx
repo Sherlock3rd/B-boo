@@ -39,15 +39,15 @@ export const LumberMill: React.FC = () => {
     // Debugging: Log available pokemon count
     // console.log("LumberMill available pokemon:", availablePokemon.length);
 
-    const assignedPokemon = [...team, ...storage].find(p => p.id === building.assignedPokemonId);
+    const assignedPokemon = [...team, ...storage].find(p => p && p.id === building.assignedPokemonId);
 
     const handleAssign = (pokemonId: string) => {
         assignPokemonToBuilding('lumber_mill', pokemonId);
         setShowAssign(false);
     };
 
-    // Calculate Rate: 1 per 10s = 6 per minute
-    const productionRate = assignedPokemon ? "6/min" : "0/min";
+    // Calculate Rate: 30 per 10s = 180 per minute
+    const productionRate = assignedPokemon ? "180/min" : "0/min";
 
     return (
         <div className="space-y-6">
@@ -88,7 +88,7 @@ export const LumberMill: React.FC = () => {
                         className="w-full py-3 border-2 border-dashed border-slate-600 rounded-lg text-slate-500 hover:border-slate-500 hover:text-slate-400 transition-colors flex items-center justify-center gap-2"
                     >
                         <User className="w-5 h-5" />
-                        Assign Pokemon (Passive +1/10s)
+                        Assign Pokemon (Passive +30/10s)
                     </button>
                 ) : (
                     <div className="flex items-center gap-4 bg-slate-900 p-3 rounded-lg border border-slate-700">

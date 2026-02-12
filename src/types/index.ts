@@ -46,10 +46,13 @@ export interface Pokemon {
 
 export interface Player {
   name: string;
-  team: Pokemon[]; // Max 4
+  team: (Pokemon | null)[]; // Max 4, supports empty slots
   inventory: Item[];
-  gold: number;
+  essence: number; // Replaces gold
   diamonds: number;
+  slotLevels: [number, number, number, number]; // Levels for the 4 active slots
+  pendingPlayerExp: number; // Accumulated idle EXP
+  pendingEssence: number; // Accumulated idle Essence
 }
 
 export interface Item {
@@ -61,7 +64,19 @@ export interface Item {
 }
 
 export type CellType = 'empty' | 'wall' | 'grass' | 'water' | 'forest' | 'mountain' | 'camp_floor';
-export type BuildingType = 'camp_center' | 'lumber_mill' | 'mine' | 'mana_well' | 'workshop' | 'tent';
+export type BuildingType = 'camp_center' | 'lumber_mill' | 'mine' | 'mana_well' | 'workshop' | 'tent' | 'teleport_point' | 'portal';
+
+export interface PortalTarget {
+    zoneId: string;
+    subZoneId: number;
+}
+
+export type CollectibleType = 'wood' | 'ore' | 'pokeball';
+
+export interface CollectibleItem {
+    type: CollectibleType;
+    amount: number;
+}
 
 export interface GridCell {
   x: number;
@@ -75,6 +90,8 @@ export interface GridCell {
   resourceType?: string;
   hasBuilding?: boolean;
   buildingType?: BuildingType;
+  portalTarget?: PortalTarget;
+  collectible?: CollectibleItem;
 }
 
 export interface GameState {

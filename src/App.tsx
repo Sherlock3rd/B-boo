@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { GridMap } from './components/map/GridMap';
 import { BattleScene } from './components/battle/BattleScene';
 import { Pokedex } from './components/menu/Pokedex';
@@ -8,6 +8,7 @@ import { useBattleStore } from './store/useBattleStore';
 import { usePlayerStore } from './store/usePlayerStore';
 import { useMapStore } from './store/useMapStore';
 import { CampModal } from './components/camp/CampModal'; // To be created
+import { ExpFloatingText } from './components/ui/ExpFloatingText';
 
 // Passive Generation Ticker
 const useGameTicker = () => {
@@ -29,13 +30,13 @@ const useGameTicker = () => {
             // Lumber Mill: Every 10s if assigned
             if (buildings.lumber_mill.assignedPokemonId && second % 10 === 0) {
                 console.log("Adding Passive Wood");
-                addResources({ wood: 1 });
+                addResources({ wood: 30 });
             }
 
             // Mine: Every 20s if assigned
             if (buildings.mine.assignedPokemonId && second % 20 === 0) {
                 console.log("Adding Passive Ore");
-                addResources({ ore: 1 });
+                addResources({ ore: 30 });
             }
             
         }, 1000);
@@ -48,12 +49,12 @@ function App() {
   const { scene, setScene, encounterLocation, clearEncounterLocation, activeBuilding, setBuildingInteraction } = useGameFlowStore();
   const { endBattle, units } = useBattleStore();
   const { addPokemon, gainExp, buildings, upgradeBuilding } = usePlayerStore(); // Added methods
-  const { clearEncounter, movePlayer, teleportPlayer } = useMapStore();
+  const { clearEncounter, teleportPlayer } = useMapStore();
 
   // Run Ticker
   useGameTicker();
 
-  const handleBattleEnd = (result: 'player' | 'enemy') => {
+  const handleBattleEnd = useCallback((result: 'player' | 'enemy') => {
     if (result === 'player') {
       // Victory: Clear the enemy from the map
       if (encounterLocation) {
@@ -63,18 +64,18 @@ function App() {
       // Gain Exp (100 per kill)
       gainExp(100);
     } else {
-        alert('You were defeated... retreating to Camp!');
-        // Defeat: Teleport to Camp Center (Safety)
+        // Defeat: Teleport to Camp Center (Plateau-1) at (2, 2)
         teleportPlayer(2, 2);
     }
     
     endBattle();
     setScene('map');
-  };
+  }, [encounterLocation, clearEncounter, clearEncounterLocation, gainExp, teleportPlayer, endBattle, setScene]);
 
   return (
     <div className="h-screen w-full bg-slate-900 text-white flex justify-center items-center overflow-hidden">
       <div className="w-full max-w-md h-full bg-black relative shadow-2xl overflow-hidden border-x border-slate-800">
+        <ExpFloatingText />
         {scene === 'map' && <GridMap />}
         {scene === 'battle' && <BattleScene onBattleEnd={handleBattleEnd} />}
         {scene === 'menu' && <Pokedex />}

@@ -197,9 +197,13 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
       const zoomX = BATTLE_WIDTH / spreadX;
       const zoomY = BATTLE_HEIGHT / spreadY;
       
+      // Calculate max allowed zoom to show at least 8 cells (BATTLE_WIDTH / 8)
+      // Example: If Width is 15, Max Zoom is ~1.875
+      const MAX_ZOOM = BATTLE_WIDTH / 8;
+
       // Choose the smaller zoom to ensure fit (contain)
-      // Clamp zoom between 1.0 (fit full map) and 3.5 (very close up)
-      const targetZoom = Math.min(3.5, Math.max(1.0, Math.min(zoomX, zoomY)));
+      // Clamp zoom between 1.0 (fit full map) and MAX_ZOOM
+      const targetZoom = Math.min(MAX_ZOOM, Math.max(1.0, Math.min(zoomX, zoomY)));
 
       setCameraState({ x: targetX, y: targetY, zoom: targetZoom });
   }, [units, isActive]);
@@ -233,6 +237,11 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
     } else if (winner === 'enemy') {
         // Wait 2 seconds then trigger callback to exit
         const timer = setTimeout(() => {
+            // Defeat Logic: Return to Camp (Plateau-1)
+            // Note: onBattleEnd handles scene switch, but we need to reset position too?
+            // Usually onBattleEnd is passed from GameFlow or similar.
+            // If it just sets scene to 'map', we are at the same spot.
+            // We should respawn at camp.
             onBattleEnd('enemy');
         }, 2000);
         return () => clearTimeout(timer);
@@ -374,15 +383,21 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
       <div className="flex-1 flex items-center justify-center z-10 p-4 overflow-hidden relative">
         {/* Mask/Viewport Container */}
         <div 
-            className="relative bg-slate-800/50 rounded-lg border border-slate-700 shadow-2xl overflow-hidden"
+            className="relative bg-slate-800/50 rounded-lg border border-slate-700 shadow-2xl overflow-hidden flex items-center justify-center"
             style={{
                 width: '100%',
                 maxWidth: '600px', // Limit width for better aspect ratio
-                aspectRatio: `${BATTLE_WIDTH}/${BATTLE_HEIGHT}`
+                height: '600px', // Explicit height to double the visual area (approx)
             }}
         >
           {/* Transform Layer (Camera) */}
-          <div className="w-full h-full origin-center will-change-transform" style={transformStyle}>
+          <div 
+              className="w-full origin-center will-change-transform" 
+              style={{
+                  ...transformStyle,
+                  aspectRatio: `${BATTLE_WIDTH}/${BATTLE_HEIGHT}` // Maintain Map Aspect Ratio
+              }}
+          >
             {/* 1. Grid Layer (Background) */}
             <div 
                 className="absolute inset-0 grid gap-1 p-2"
@@ -451,6 +466,17 @@ export const BattleScene: React.FC<{ onBattleEnd: (winner: 'player' | 'enemy') =
                                     )}
                                     style={{ width: `${(unit.currentHp / unit.maxHp) * 100}%` }}
                                 />
+                            </div>
+
+                            {/* Level & Identity Badge (Below) */}
+                            <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 flex flex-col items-center z-20 w-max pointer-events-none scale-50 origin-top">
+                                <div className={cn(
+                                    "text-[8px] font-bold px-1 py-0 rounded border shadow-sm flex items-center gap-0.5 backdrop-blur-sm",
+                                    unit.team === 'player' ? "bg-blue-900/80 border-blue-400 text-blue-100" : "bg-red-900/80 border-red-400 text-red-100"
+                                )}>
+                                    <span className="uppercase tracking-tighter text-[7px] opacity-70">Lv.</span>
+                                    <span className="text-[8px]">{unit.level}</span>
+                                </div>
                             </div>
                             
                             {/* Action Indicator (If active) */}
