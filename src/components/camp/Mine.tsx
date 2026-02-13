@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { usePlayerStore } from '@/store/usePlayerStore';
-import { ArrowUp, User, Shovel } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ArrowUp, Shovel, User } from 'lucide-react';
+// import { cn } from '@/lib/utils';
 
 export const Mine: React.FC = () => {
     const { buildings, upgradeBuilding, wood, ore, spendResources, addResources, team, storage, assignPokemonToBuilding } = usePlayerStore();

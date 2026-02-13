@@ -1,4 +1,4 @@
-import { GridCell, CellType, Pokemon, BuildingType, CollectibleType, CollectibleItem } from '@/types';
+import { GridCell, CellType, BuildingType } from '@/types';
 import { REGION_CONFIG, REGION_SIZE, GLOBAL_MAP_WIDTH, GLOBAL_MAP_HEIGHT } from '@/data/constants';
 import { WILD_POKEMON_POOL, INITIAL_PLATEAU_POOL, ISTVAN_V_POOL } from '@/data/pokemon';
 

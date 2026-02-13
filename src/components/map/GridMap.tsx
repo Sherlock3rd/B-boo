@@ -8,7 +8,7 @@ import { useBattleStore } from '@/store/useBattleStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { INITIAL_PLAYER_TEAM, ISTVAN_V_POOL, INITIAL_PLATEAU_POOL } from '@/data/pokemon';
 import { generatePokemon } from '@/utils/pokemonGenerator';
-import { Home, Users, BookOpen, X, Map as MapIcon, Axe, Shovel, Droplet, Coins, Zap, Lock, Unlock, Tent, Hammer, Trees, Gem, CircleDot } from 'lucide-react';
+import { Home, Users, BookOpen, X, Map as MapIcon, Axe, Shovel, Droplet, Zap, Lock, Unlock, Tent, Hammer, Trees, Gem, CircleDot } from 'lucide-react';
 
 // Helper for cell styling - Pure Solid Colors
 const TEXTURE_STYLES: Record<CellType, React.CSSProperties> = {
@@ -41,6 +41,7 @@ const TEXTURE_STYLES: Record<CellType, React.CSSProperties> = {
         backgroundImage: 'linear-gradient(0deg, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)', 
         backgroundSize: '20px 20px' 
     },
+    empty: { backgroundColor: '#000000' }
 };
 
 const getCellStyle = (type: CellType) => {
@@ -96,8 +97,9 @@ const MiniMapPreview: React.FC<{
     // State for drag offset
     const [offset, setOffset] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    // const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
+    /*
     const handleMouseDown = (e: React.MouseEvent) => {
         setIsDragging(true);
         setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
@@ -108,31 +110,9 @@ const MiniMapPreview: React.FC<{
         if (!isDragging) return;
         const newX = e.clientX - dragStart.x;
         const newY = e.clientY - dragStart.y;
-        
-        // Limit drag range to reasonable bounds (e.g. +/- 50 cells)
-        // Convert pixel drag to roughly cell units? No, let's just use raw pixels or cell units.
-        // Let's interpret offset as CELL offset.
-        // But mouse move is pixels.
-        // Let's say 10px = 1 cell.
-        
-        // Actually, let's keep it simple: offset is in CELLS.
-        // We need to accumulate pixel delta and convert to cells?
-        // Too complex for quick implementation.
-        // Let's just say offset is added to startX/startY directly.
-        
-        // Simpler Drag: Just track mouse delta and update offset if delta > threshold.
-        // Wait, standard drag behavior:
-        // offset.x = (e.clientX - startX) / CELL_SIZE
-        
-        // Let's stick to the requested "Long Press Drag" logic, but standard drag is better UX.
-        // We'll update the offset state which shifts the viewport.
-        
-        // Simplified: Just allow clicking to open big map for now, user asked for drag IN PREVIEW?
-        // "preview window... add mouse long press drag"
-        
-        // Okay, let's implement a simple drag on the preview container.
-        // Since we are rendering a grid, we can just shift the startX/startY by the offset.
+        // Logic incomplete
     };
+    */
 
     const handleMouseUp = () => {
         setIsDragging(false);
@@ -247,7 +227,7 @@ const MiniMapPreview: React.FC<{
             onMouseMove={onMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseUp}
-            onClick={(e) => {
+            onClick={(_e) => {
                 // Only trigger click if not dragged
                 if (Math.abs(offset.x - baseOffset.x) < 0.5 && Math.abs(offset.y - baseOffset.y) < 0.5) {
                     onClick();
@@ -383,7 +363,7 @@ export const GridMap: React.FC = () => {
   const { grid, playerPosition, movePlayer, initMap, checkEncounter, clearEncounter, teleportToMap, unlockedTeleports, getCurrentZoneInfo } = useMapStore();
   const { setScene } = useGameFlowStore();
   const { startBattle } = useBattleStore();
-  const { team, addPokemon, level, exp, maxExp, wood, ore, mana, maxMana, essence, buildings, storage, refillMana, getPokemonById, tick, inventory } = usePlayerStore();
+  const { team, addPokemon, level, exp, maxExp, wood, ore, mana, maxMana, essence, buildings, refillMana, getPokemonById, tick, inventory } = usePlayerStore();
 
   // Tick System for Idle Rewards
   useEffect(() => {

@@ -1,29 +1,29 @@
 import { Pokemon, Skill } from '@/types';
 
-const TACKLE: Skill = { id: 'tackle', name: 'Tackle', type: 'Wind', power: 40, accuracy: 100, description: 'Basic attack', cooldown: 0, range: 1 };
-const EMBER: Skill = { id: 'ember', name: 'Ember', type: 'Fire', power: 40, accuracy: 100, description: 'Fire attack', cooldown: 0, range: 3 };
-const WATER_GUN: Skill = { id: 'water_gun', name: 'Water Gun', type: 'Water', power: 40, accuracy: 100, description: 'Water attack', cooldown: 0, range: 3 };
-const THUNDER_SHOCK: Skill = { id: 'thunder_shock', name: 'Thunder Shock', type: 'Light', power: 40, accuracy: 100, description: 'Electric attack', cooldown: 0, range: 3 };
+const TACKLE: Skill = { id: 'tackle', name: 'Tackle', type: 'Wind', power: 40, accuracy: 100, description: 'Basic attack', cooldown: 0, range: 1, category: 'Single' };
+const EMBER: Skill = { id: 'ember', name: 'Ember', type: 'Fire', power: 40, accuracy: 100, description: 'Fire attack', cooldown: 0, range: 3, category: 'Single' };
+const WATER_GUN: Skill = { id: 'water_gun', name: 'Water Gun', type: 'Water', power: 40, accuracy: 100, description: 'Water attack', cooldown: 0, range: 3, category: 'Single' };
+const THUNDER_SHOCK: Skill = { id: 'thunder_shock', name: 'Thunder Shock', type: 'Light', power: 40, accuracy: 100, description: 'Electric attack', cooldown: 0, range: 3, category: 'Single' };
 
 // New Skills
-const FLAME_BURST: Skill = { id: 'flame_burst', name: 'Flame Burst', type: 'Fire', power: 60, accuracy: 90, description: 'Strong Fire', cooldown: 2, range: 3 };
+const FLAME_BURST: Skill = { id: 'flame_burst', name: 'Flame Burst', type: 'Fire', power: 60, accuracy: 90, description: 'Strong Fire', cooldown: 2, range: 3, category: 'Single' };
 const HEAL_PULSE: Skill = { id: 'heal_pulse', name: 'Heal Pulse', type: 'Light', power: 0, accuracy: 100, description: 'Heal', cooldown: 3, category: 'Heal', range: 4 }; 
 const AQUA_RING: Skill = { id: 'aqua_ring', name: 'Aqua Ring', type: 'Water', power: 0, accuracy: 100, description: 'Heal', cooldown: 3, category: 'Heal', range: 4 };
-const RAZOR_LEAF: Skill = { id: 'razor_leaf', name: 'Razor Leaf', type: 'Wind', power: 55, accuracy: 95, description: 'Sharp leaves', cooldown: 1, range: 3 };
+const RAZOR_LEAF: Skill = { id: 'razor_leaf', name: 'Razor Leaf', type: 'Wind', power: 55, accuracy: 95, description: 'Sharp leaves', cooldown: 1, range: 3, category: 'Single' };
 const HOWL: Skill = { id: 'howl', name: 'Howl', type: 'Wind', power: 0, accuracy: 100, description: 'Buff Atk', cooldown: 3, category: 'Buff', range: 0 }; // Self buff
 
 // Additional Skills
-const BITE: Skill = { id: 'bite', name: 'Bite', type: 'Dark', power: 60, accuracy: 100, description: 'Chomp!', cooldown: 0, range: 1 };
-const DARK_PULSE: Skill = { id: 'dark_pulse', name: 'Dark Pulse', type: 'Dark', power: 80, accuracy: 100, description: 'Dark aura', cooldown: 2, range: 3 };
-const FIRE_SPIN: Skill = { id: 'fire_spin', name: 'Fire Spin', type: 'Fire', power: 35, accuracy: 90, description: 'Traps enemy', cooldown: 1, range: 3 };
-const BUBBLE: Skill = { id: 'bubble', name: 'Bubble', type: 'Water', power: 40, accuracy: 100, description: 'Bubbles', cooldown: 0, range: 3 };
-const SPARK: Skill = { id: 'spark', name: 'Spark', type: 'Light', power: 65, accuracy: 100, description: 'Shocking', cooldown: 1, range: 1 }; // Physical electric move usually
-const VINE_WHIP: Skill = { id: 'vine_whip', name: 'Vine Whip', type: 'Wind', power: 45, accuracy: 100, description: 'Whip it', cooldown: 0, range: 2 };
-const HYDRO_PUMP: Skill = { id: 'hydro_pump', name: 'Hydro Pump', type: 'Water', power: 110, accuracy: 80, description: 'Massive Water', cooldown: 4, range: 4 };
-const SOLAR_BEAM: Skill = { id: 'solar_beam', name: 'Solar Beam', type: 'Wind', power: 120, accuracy: 100, description: 'Charge beam', cooldown: 4, range: 5 };
-const FIRE_BLAST: Skill = { id: 'fire_blast', name: 'Fire Blast', type: 'Fire', power: 110, accuracy: 85, description: 'Massive Fire', cooldown: 4, range: 4 };
-const THUNDER: Skill = { id: 'thunder', name: 'Thunder', type: 'Light', power: 110, accuracy: 70, description: 'Massive Electric', cooldown: 4, range: 4 };
-const SHADOW_BALL: Skill = { id: 'shadow_ball', name: 'Shadow Ball', type: 'Dark', power: 80, accuracy: 100, description: 'Ghostly blob', cooldown: 2, range: 3 };
+const BITE: Skill = { id: 'bite', name: 'Bite', type: 'Dark', power: 60, accuracy: 100, description: 'Chomp!', cooldown: 0, range: 1, category: 'Single' };
+const DARK_PULSE: Skill = { id: 'dark_pulse', name: 'Dark Pulse', type: 'Dark', power: 80, accuracy: 100, description: 'Dark aura', cooldown: 2, range: 3, category: 'Single' };
+const FIRE_SPIN: Skill = { id: 'fire_spin', name: 'Fire Spin', type: 'Fire', power: 35, accuracy: 90, description: 'Traps enemy', cooldown: 1, range: 3, category: 'Single' };
+const BUBBLE: Skill = { id: 'bubble', name: 'Bubble', type: 'Water', power: 40, accuracy: 100, description: 'Bubbles', cooldown: 0, range: 3, category: 'Single' };
+const SPARK: Skill = { id: 'spark', name: 'Spark', type: 'Light', power: 65, accuracy: 100, description: 'Shocking', cooldown: 1, range: 1, category: 'Single' }; // Physical electric move usually
+const VINE_WHIP: Skill = { id: 'vine_whip', name: 'Vine Whip', type: 'Wind', power: 45, accuracy: 100, description: 'Whip it', cooldown: 0, range: 2, category: 'Single' };
+const HYDRO_PUMP: Skill = { id: 'hydro_pump', name: 'Hydro Pump', type: 'Water', power: 110, accuracy: 80, description: 'Massive Water', cooldown: 4, range: 4, category: 'Single' };
+const SOLAR_BEAM: Skill = { id: 'solar_beam', name: 'Solar Beam', type: 'Wind', power: 120, accuracy: 100, description: 'Charge beam', cooldown: 4, range: 5, category: 'Single' };
+const FIRE_BLAST: Skill = { id: 'fire_blast', name: 'Fire Blast', type: 'Fire', power: 110, accuracy: 85, description: 'Massive Fire', cooldown: 4, range: 4, category: 'Single' };
+const THUNDER: Skill = { id: 'thunder', name: 'Thunder', type: 'Light', power: 110, accuracy: 70, description: 'Massive Electric', cooldown: 4, range: 4, category: 'Single' };
+const SHADOW_BALL: Skill = { id: 'shadow_ball', name: 'Shadow Ball', type: 'Dark', power: 80, accuracy: 100, description: 'Ghostly blob', cooldown: 2, range: 3, category: 'Single' };
 
 export const SKILL_POOL = [
     TACKLE, EMBER, WATER_GUN, THUNDER_SHOCK,

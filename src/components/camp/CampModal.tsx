@@ -1,9 +1,10 @@
 
 import React from 'react';
-import { X, Hammer, Shovel, Axe, Droplet, Home, Tent, ArrowUp } from 'lucide-react';
-import { usePlayerStore, BuildingType } from '@/store/usePlayerStore';
-import { cn } from '@/lib/utils';
-import { useGameFlowStore } from '@/store/useGameFlowStore';
+import { BuildingType } from '@/types';
+import { usePlayerStore } from '@/store/usePlayerStore';
+import { X, Hammer, Shovel, Axe, Droplet, Home, Tent } from 'lucide-react';
+// import { cn } from '@/lib/utils';
+// import { useGameFlowStore } from '@/store/useGameFlowStore';
 
 // Sub-components for each building type
 import { CampCenter } from './CampCenter';

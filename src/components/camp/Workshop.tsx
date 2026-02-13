@@ -1,10 +1,11 @@
 
 import React from 'react';
 import { usePlayerStore } from '@/store/usePlayerStore';
-import { ArrowUp, Hammer, CircleDot } from 'lucide-react';
+import { ArrowUp, CircleDot } from 'lucide-react';
+// import { ArrowUp, Hammer, CircleDot } from 'lucide-react';
 
 export const Workshop: React.FC = () => {
-    const { buildings, upgradeBuilding, wood, ore, mana, spendResources, addItem } = usePlayerStore();
+    const { buildings, upgradeBuilding, wood, ore, spendResources, addItem } = usePlayerStore();
     const building = buildings.workshop;
     
     // Cost: Wood 100, Ore 0

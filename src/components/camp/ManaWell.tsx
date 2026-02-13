@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { usePlayerStore } from '@/store/usePlayerStore';
-import { ArrowUp, Droplet } from 'lucide-react';
+import { ArrowUp } from 'lucide-react';
 
 export const ManaWell: React.FC = () => {
     const { buildings, upgradeBuilding, wood, ore, storedMana, maxStoredMana, spendResources } = usePlayerStore();

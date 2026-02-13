@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { BuildingType } from '@/store/usePlayerStore';
+import { BuildingType } from '@/types';
 
 type Scene = 'map' | 'battle' | 'menu' | 'team';
 

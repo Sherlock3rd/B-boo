@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Pokemon } from '@/types';
 import { TYPE_CHART } from '@/data/constants';
-import { BATTLE_WIDTH, BATTLE_HEIGHT, getDistance, isInRange, findBestMoveTarget, getNextStep } from '@/utils/battleUtils';
+import { BATTLE_WIDTH, getDistance, isInRange, findBestMoveTarget, getNextStep } from '@/utils/battleUtils';
 import { usePlayerStore } from '@/store/usePlayerStore';
 
 export interface BattleUnit extends Pokemon {
@@ -83,7 +83,7 @@ export const useBattleStore = create<BattleState>((set, get) => ({
             effectiveLevel = usePlayerStore.getState().getPokemonLevel(p.id);
         }
 
-        const growthFactor = 1 + (effectiveLevel - 1) * 0.1;
+        // const growthFactor = 1 + (effectiveLevel - 1) * 0.1;
         
         // Base stats are stored in p.stats. 
         // NOTE: p.stats might ALREADY be scaled if it's a wild pokemon generated with a level.

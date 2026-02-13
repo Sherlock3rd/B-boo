@@ -47,8 +47,8 @@ const useGameTicker = () => {
 
 function App() {
   const { scene, setScene, encounterLocation, clearEncounterLocation, activeBuilding, setBuildingInteraction } = useGameFlowStore();
-  const { endBattle, units } = useBattleStore();
-  const { addPokemon, gainExp, buildings, upgradeBuilding } = usePlayerStore(); // Added methods
+  const { endBattle } = useBattleStore();
+  const { gainExp } = usePlayerStore(); // Added methods
   const { clearEncounter, teleportPlayer } = useMapStore();
 
   // Run Ticker

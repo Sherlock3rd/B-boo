@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Player, Pokemon, Item } from '@/types';
+import { Player, Pokemon, Item, BuildingType } from '@/types';
 import { getEvolutionTarget } from '@/utils/evolution';
 
 // Level 1-30 Exp Table
@@ -11,8 +11,6 @@ const EXP_TABLE: number[] = [
     110000, 125000, 141000, 158000, 176000,
     195000, 215000, 236000, 258000, 281000
 ];
-
-export type BuildingType = 'camp_center' | 'lumber_mill' | 'mine' | 'mana_well' | 'workshop' | 'tent';
 
 export interface BuildingState {
     level: number;
@@ -69,6 +67,16 @@ interface PlayerState extends Player {
   showFloatingText: (text: string, color?: string) => void;
   swapTeamSlots: (indexA: number, indexB: number) => void;
   checkTeamEvolutions: () => void;
+
+  // Essence & Slot Actions
+  addEssence: (amount: number) => void;
+  spendEssence: (amount: number) => boolean;
+  getPokemonLevel: (pokemonId: string) => number;
+  upgradeSlot: (slotIndex: number) => void;
+  
+  // Idle System
+  tick: () => void;
+  claimIdleRewards: () => void;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -95,7 +103,9 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       mine: { level: 1 },
       mana_well: { level: 1 },
       workshop: { level: 1 },
-      tent: { level: 1 }
+      tent: { level: 1 },
+      teleport_point: { level: 1 },
+      portal: { level: 1 }
   },
 
   team: [null, null, null, null],
@@ -268,7 +278,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
   // Deprecated Gold Actions (Compat)
   addGold: (amount) => set((state) => ({ essence: state.essence + amount })),
-  spendGold: (amount) => false,
+  spendGold: (_amount) => false,
 
   gainExp: (amount) => set((state) => {
       if (state.level >= state.maxLevel) return state;

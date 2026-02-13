@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { usePlayerStore } from '@/store/usePlayerStore';
-import { ArrowUp, Gem, Hammer, Zap, User } from 'lucide-react';
+import { ArrowUp, Zap, User } from 'lucide-react';
 
 export const CampCenter: React.FC = () => {
     const { buildings, upgradeBuilding, wood, ore, spendResources, pendingPlayerExp, pendingEssence, claimIdleRewards } = usePlayerStore();
