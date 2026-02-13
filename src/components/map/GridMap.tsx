@@ -508,15 +508,20 @@ export const GridMap: React.FC = () => {
           return;
       }
       
+      const gridX = Math.floor(x / REGION_SIZE);
+      const gridY = Math.floor(y / REGION_SIZE);
+      const region = REGION_CONFIG.find(r => r.gridX === gridX && r.gridY === gridY);
+      const zoneId = region ? region.id : currentZoneInfo.zoneId;
+
       if (cell.enemyGroup && cell.enemyGroup.length > 0) {
-          const encounterEnemies = cell.enemyGroup.map(base => generatePokemon(base));
+          const encounterEnemies = cell.enemyGroup.map(base => generatePokemon(base, zoneId));
           startBattle(team, encounterEnemies);
       } else {
           const count = cell.enemyCount || 1;
           const enemies = Array(count).fill(0).map(() => {
-              const pool = currentZoneInfo.zoneId === 'istvan' ? ISTVAN_V_POOL : INITIAL_PLATEAU_POOL;
+              const pool = currentZoneInfo.zoneId.includes('istvan') ? ISTVAN_V_POOL : INITIAL_PLATEAU_POOL;
               const base = pool[Math.floor(Math.random() * pool.length)];
-              return generatePokemon(base); 
+              return generatePokemon(base, zoneId); 
           });
           startBattle(team, enemies);
       }

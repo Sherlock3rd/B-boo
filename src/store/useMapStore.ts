@@ -57,6 +57,28 @@ export const useMapStore = create<MapState>((set, get) => ({
         const playerLevel = usePlayerStore.getState().level;
         if (playerLevel < targetRegion.levelReq) {
             alert(`Locked! ${targetRegion.name} requires Level ${targetRegion.levelReq}.`);
+            
+            // Push back if currently on a portal to avoid getting stuck "in" the door
+            const currentCell = grid[playerPosition.y][playerPosition.x];
+            if (currentCell.buildingType === 'portal') {
+                 let backX = playerPosition.x;
+                 let backY = playerPosition.y;
+                 
+                 // Move opposite to the attempted direction
+                 if (direction === 'up') backY++;
+                 else if (direction === 'down') backY--;
+                 else if (direction === 'left') backX++;
+                 else if (direction === 'right') backX--;
+                 
+                 // Verify bounds and walkability
+                 if (
+                     backY >= 0 && backY < GLOBAL_MAP_HEIGHT &&
+                     backX >= 0 && backX < GLOBAL_MAP_WIDTH &&
+                     grid[backY][backX].isWalkable
+                 ) {
+                     set({ playerPosition: { x: backX, y: backY } });
+                 }
+            }
             return;
         }
     }

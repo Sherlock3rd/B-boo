@@ -17,6 +17,17 @@ export const CampModal: React.FC<{ type: BuildingType; onClose: () => void }> = 
     const { buildings } = usePlayerStore();
     const building = buildings[type];
 
+    // Close on ESC
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
     // If building data is missing (e.g. teleport_point has no building data in store), handle gracefully
     // Teleport Points are not upgradeable buildings in player store, so they don't have 'level'.
     // We should probably just return null or show a simple info modal, but for now let's prevent the crash.
@@ -36,17 +47,6 @@ export const CampModal: React.FC<{ type: BuildingType; onClose: () => void }> = 
         }
         return null;
     }
-
-    // Close on ESC
-    React.useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                onClose();
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [onClose]);
 
     const getTitle = () => {
         switch (type) {
