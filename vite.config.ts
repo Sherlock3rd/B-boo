@@ -5,6 +5,7 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  base: '/B-boo/', // Required for GitHub Pages
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

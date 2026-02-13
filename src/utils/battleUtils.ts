@@ -1,5 +1,5 @@
 import { BattleUnit } from '@/store/useBattleStore';
-import { Pokemon } from '@/types';
+// import { Pokemon } from '@/types';
 // import { Skill } from '@/types';
 
 export const BATTLE_WIDTH = 16;
